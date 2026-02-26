@@ -1,0 +1,5 @@
+Berikut adalah rubrik penilaian yang harus kamu gunakan:
+
+{{rubric}}
+
+Gunakan rubrik di atas sebagai satu-satunya dasar penilaian. Jangan menambahkan kriteria di luar rubrik yang diberikan.

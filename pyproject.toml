@@ -1,0 +1,12 @@
+[project]
+name = "code-grading-service"
+version = "0.1.0"
+description = "Layanan penilaian kode program berbasis LLM dengan Prompt Engineering"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "pydantic-settings>=2.7.0",
+    "httpx>=0.28.0",
+]
