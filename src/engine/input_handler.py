@@ -11,10 +11,19 @@ class InputHandler:
         - Verify required fields are non-empty
         - Normalize line endings
         """
-        # TODO: Implement validation logic
-        raise NotImplementedError
+        request.problem_description = request.problem_description.strip()
+
+        if request.student_code is not None:
+            sanitized = self.sanitize_code(request.student_code)
+            if not sanitized.strip():
+                raise ValueError("student_code must not be empty")
+            request.student_code = sanitized
+
+        if request.code_file_url is not None:
+            request.code_file_url = request.code_file_url.strip()
+
+        return request
 
     def sanitize_code(self, code: str) -> str:
         """Remove potentially harmful content from student code."""
-        # TODO: Implement code sanitization
-        raise NotImplementedError
+        return code.replace("\r\n", "\n").strip()
