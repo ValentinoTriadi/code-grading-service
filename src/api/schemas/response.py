@@ -2,9 +2,8 @@ from pydantic import BaseModel
 
 
 class GradingResponse(BaseModel):
-    """Response model for the grading endpoint."""
+    """Response model for single-submission grading (inline or file)."""
 
     score: float
     feedback: str
-    reasoning: str  # Chain of Thought reasoning from LLM
-    raw_response: str | None = None
+    reasoning: str | None = None  # Only present when with_reason=True

@@ -8,7 +8,7 @@ from src.engine.input_handler import InputHandler
 class TestInputHandler:
     """Tests for InputHandler."""
 
-    def test_validate_sanitizes_inline_student_code(self):
+    def test_validate_sanitizes_student_code(self):
         handler = InputHandler()
         request = GradingRequest(
             student_code="print('x')\r\n",
@@ -20,11 +20,24 @@ class TestInputHandler:
         assert validated.student_code == "print('x')"
         assert validated.problem_description == "Desc"
 
-    def test_validate_raises_for_empty_inline_code(self):
-        with pytest.raises(ValidationError, match="Provide exactly one input mode"):
+    def test_validate_raises_for_empty_code(self):
+        with pytest.raises(ValidationError, match="student_code must not be empty"):
             GradingRequest(student_code="   ", problem_description="desc")
 
-    def test_sanitize_code_normalizes_line_endings(self):
+    def test_sanitize_normalizes_line_endings(self):
         handler = InputHandler()
 
         assert handler.sanitize_code("a\r\nb\r\n") == "a\nb"
+
+    def test_sanitize_strips_whitespace(self):
+        handler = InputHandler()
+
+        assert handler.sanitize_code("  code  ") == "code"
+
+    def test_validate_preserves_code_content(self):
+        handler = InputHandler()
+        request = GradingRequest(student_code="print('ok')", problem_description="desc")
+
+        validated = handler.validate(request)
+
+        assert validated.student_code == "print('ok')"
