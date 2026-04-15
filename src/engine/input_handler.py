@@ -1,4 +1,8 @@
+import logging
+
 from src.api.schemas.request import GradingRequest
+
+logger = logging.getLogger(__name__)
 
 
 class InputHandler:
@@ -15,8 +19,14 @@ class InputHandler:
         request.student_code = self.sanitize_code(request.student_code)
 
         if not request.student_code:
+            logger.error("Validation failed — student_code is empty after sanitization")
             raise ValueError("student_code must not be empty")
 
+        logger.debug(
+            "Input validated — code length=%d chars, rubric=%s",
+            len(request.student_code),
+            "custom" if request.rubric else "default",
+        )
         return request
 
     def sanitize_code(self, code: str) -> str:

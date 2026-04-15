@@ -2,8 +2,11 @@ Lakukan penilaian secara bertahap dengan langkah-langkah berikut:
 
 1. **Pahami Soal**: Baca dan pahami deskripsi soal yang diberikan.
 2. **Analisis Kode**: Baca kode mahasiswa secara menyeluruh.
-3. **Evaluasi per Kriteria**: Untuk setiap kriteria di rubrik, analisis apakah kode memenuhi kriteria tersebut dan berikan justifikasi.
-4. **Hitung Skor**: Berdasarkan evaluasi per kriteria, tentukan skor akhir.
+3. **Evaluasi per Kriteria**: Untuk setiap kriteria di rubrik, tulis satu bullet point per kriteria dengan format TEPAT seperti ini (nama kriteria HARUS berada di baris yang sama dengan tanda `-`, bukan di baris baru):
+   - **Nama Kriteria (bobot%)**: Penjelasan evaluasi. **Skor**: X/Y
+4. **Hitung Skor**: Berdasarkan evaluasi per kriteria, tentukan skor akhir (0–100).
 5. **Tulis Umpan Balik**: Berikan umpan balik konstruktif yang spesifik dan actionable.
+
+PENTING: Jangan menempatkan nama kriteria di baris baru setelah `-`. Selalu tulis `- **Nama**: ...` dalam satu baris.
 
 Jangan langsung memberikan skor akhir. Tunjukkan proses penalaranmu terlebih dahulu.
