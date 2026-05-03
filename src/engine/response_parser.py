@@ -32,7 +32,9 @@ class ResponseParser:
         )
 
         if feedback_detail is None:
-            logger.warning("FEEDBACK_JSON tag missing or invalid — feedback_detail will be null")
+            logger.warning(
+                "FEEDBACK_JSON tag missing or invalid — feedback_detail will be null"
+            )
 
         return GradingResponse(
             score=score,
@@ -49,7 +51,9 @@ class ResponseParser:
         # Fallback: LLM omitted the closing `>` → <TAG\ncontent</TAG>
         match = re.search(rf"<{tag}\s*\n(.*?)</{tag}>", text, re.DOTALL | re.IGNORECASE)
         if match:
-            logger.warning("Malformed opening tag <%s> (missing '>') — using fallback parser", tag)
+            logger.warning(
+                "Malformed opening tag <%s> (missing '>') — using fallback parser", tag
+            )
             return match.group(1)
         return None
 

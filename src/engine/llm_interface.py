@@ -52,7 +52,9 @@ class RequestRateLimiter:
 class LLMInterface:
     """Sends constructed prompts to the configured LLM provider."""
 
-    def __init__(self, provider: BaseLLMProvider, rate_limiter: RequestRateLimiter | None = None) -> None:
+    def __init__(
+        self, provider: BaseLLMProvider, rate_limiter: RequestRateLimiter | None = None
+    ) -> None:
         self.provider = provider
         self.rate_limiter = rate_limiter
 

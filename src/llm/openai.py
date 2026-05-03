@@ -24,8 +24,12 @@ class OpenAIProvider(BaseLLMProvider):
         self.temperature = temperature
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        logger.debug("OpenAI request — model=%s, max_tokens=%d, temperature=%.1f",
-                     self.model, self.max_tokens, self.temperature)
+        logger.debug(
+            "OpenAI request — model=%s, max_tokens=%d, temperature=%.1f",
+            self.model,
+            self.max_tokens,
+            self.temperature,
+        )
         response = await self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
@@ -34,6 +38,10 @@ class OpenAIProvider(BaseLLMProvider):
         )
         usage = response.usage
         if usage:
-            logger.info("OpenAI usage — prompt=%d, completion=%d, total=%d tokens",
-                        usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
+            logger.info(
+                "OpenAI usage — prompt=%d, completion=%d, total=%d tokens",
+                usage.prompt_tokens,
+                usage.completion_tokens,
+                usage.total_tokens,
+            )
         return response.choices[0].message.content or ""

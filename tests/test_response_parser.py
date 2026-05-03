@@ -28,7 +28,7 @@ Good job overall.
         assert result.feedback_detail.criteria[0].name == "Kebenaran"
 
     def test_parse_without_reasoning_tag(self):
-        raw = "<SCORE>70</SCORE>\n<FEEDBACK>Needs improvement.</FEEDBACK>\n<FEEDBACK_JSON>{\"summary\": \"Needs improvement.\", \"criteria\": [], \"suggestions\": []}</FEEDBACK_JSON>"
+        raw = '<SCORE>70</SCORE>\n<FEEDBACK>Needs improvement.</FEEDBACK>\n<FEEDBACK_JSON>{"summary": "Needs improvement.", "criteria": [], "suggestions": []}</FEEDBACK_JSON>'
         result = self._parser().parse(raw)
 
         assert result.score == 70.0

@@ -11,7 +11,9 @@ from src.prompts.builder import PromptBuilder
 from src.services.grading_service import GradingService
 
 
-llm_rate_limiter = RequestRateLimiter(max_requests_per_minute=settings.llm_requests_per_minute)
+llm_rate_limiter = RequestRateLimiter(
+    max_requests_per_minute=settings.llm_requests_per_minute
+)
 
 
 def get_settings() -> Settings:
@@ -38,6 +40,7 @@ def get_llm_provider(cfg: Settings = Depends(get_settings)) -> BaseLLMProvider:
 
     if provider == "openai":
         from src.llm.openai import OpenAIProvider
+
         return OpenAIProvider(
             api_key=cfg.llm_api_key,
             base_url=cfg.llm_base_url,
@@ -48,6 +51,7 @@ def get_llm_provider(cfg: Settings = Depends(get_settings)) -> BaseLLMProvider:
 
     if provider == "gemini":
         from src.llm.gemini import GeminiProvider
+
         return GeminiProvider(
             api_key=cfg.llm_api_key,
             model=cfg.llm_model_name,

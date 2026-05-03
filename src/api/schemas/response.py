@@ -14,7 +14,9 @@ class FeedbackDetail(BaseModel):
     """Structured breakdown of the grading feedback."""
 
     summary: str = Field(description="Overall grading summary.")
-    criteria: list[CriterionResult] = Field(description="Per-criterion score and comment.")
+    criteria: list[CriterionResult] = Field(
+        description="Per-criterion score and comment."
+    )
     suggestions: list[str] = Field(
         default_factory=list,
         description="Specific, actionable improvement suggestions.",
@@ -51,7 +53,9 @@ class GradingResponse(BaseModel):
                             "comment": "Pendekatan sudah efisien.",
                         },
                     ],
-                    "suggestions": ["Gunakan nama parameter yang lebih deskriptif seperti `bilangan1` dan `bilangan2`."],
+                    "suggestions": [
+                        "Gunakan nama parameter yang lebih deskriptif seperti `bilangan1` dan `bilangan2`."
+                    ],
                 },
                 "reasoning": None,
             }

@@ -14,7 +14,9 @@ router = APIRouter(prefix="/api/v1", tags=["grading"])
 ControllerDep = Annotated[GradingController, Depends(get_grading_controller)]
 
 _COMMON_ERRORS = {
-    400: {"description": "Invalid request — missing required fields or malformed input."},
+    400: {
+        "description": "Invalid request — missing required fields or malformed input."
+    },
     500: {"description": "Internal error — LLM provider failure or parsing error."},
 }
 
@@ -49,14 +51,57 @@ async def route_grade_file(
     controller: ControllerDep,
     problems: str = Form(..., description="Problem statement given to students."),
     code: UploadFile = File(..., description="Student source code file (UTF-8 text)."),
-    rubric: str | None = Form(None, description="Custom rubric. Uses default if omitted."),
-    with_reason: bool = Form(False, description="Include LLM reasoning in the response."),
+    rubric: str | None = Form(
+        None, description="Custom rubric. Uses default if omitted."
+    ),
+    with_reason: bool = Form(
+        False, description="Include LLM reasoning in the response."
+    ),
 ) -> GradingResponse:
     """Grade student code submitted as a **file upload** (`multipart/form-data`).
 
     Accepts any plain-text source file (`.py`, `.java`, `.cpp`, etc.).
     """
     return await controller.grade_file(problems, code, rubric, with_reason)
+
+
+@router.post(
+    "/grade/batch",
+    summary="Grade a batch of submissions from a zip archive",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "content": {
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            },
+            "description": "Excel file (`grading_results.xlsx`) with one row per submission.",
+        },
+        400: {"description": "Invalid or empty zip archive."},
+        500: {"description": "Internal error during grading."},
+    },
+)
+async def route_grade_batch(
+    controller: ControllerDep,
+    problems: str = Form(
+        ..., description="Problem statement applied to all submissions."
+    ),
+    files: UploadFile = File(
+        ..., description="Zip archive — one source file per student."
+    ),
+    rubric: str | None = Form(
+        None, description="Custom rubric. Uses default if omitted."
+    ),
+    with_reason: bool = Form(
+        False, description="Add a Reasoning column to the Excel output."
+    ),
+) -> StreamingResponse:
+    """Grade multiple submissions from a **zip archive** (`multipart/form-data`).
+
+    Each file inside the zip is treated as one student submission.
+    Returns an **Excel file** (`grading_results.xlsx`) with columns:
+    `No`, `Filename`, `Score`, `Feedback`, `Reasoning` *(if requested)*, `Error`.
+    """
+    return await controller.grade_batch(problems, files, rubric, with_reason)
 
 
 @router.post(
@@ -105,38 +150,9 @@ async def route_grade_file_stream(
     with_reason: bool = Form(False),
 ) -> EventSourceResponse:
     """Grade a file upload and stream pipeline progress via **Server-Sent Events**."""
-    return EventSourceResponse(controller.grade_file_stream(problems, code, rubric, with_reason))
-
-
-@router.post(
-    "/grade/batch",
-    summary="Grade a batch of submissions from a zip archive",
-    response_class=StreamingResponse,
-    responses={
-        200: {
-            "content": {
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
-            },
-            "description": "Excel file (`grading_results.xlsx`) with one row per submission.",
-        },
-        400: {"description": "Invalid or empty zip archive."},
-        500: {"description": "Internal error during grading."},
-    },
-)
-async def route_grade_batch(
-    controller: ControllerDep,
-    problems: str = Form(..., description="Problem statement applied to all submissions."),
-    files: UploadFile = File(..., description="Zip archive — one source file per student."),
-    rubric: str | None = Form(None, description="Custom rubric. Uses default if omitted."),
-    with_reason: bool = Form(False, description="Add a Reasoning column to the Excel output."),
-) -> StreamingResponse:
-    """Grade multiple submissions from a **zip archive** (`multipart/form-data`).
-
-    Each file inside the zip is treated as one student submission.
-    Returns an **Excel file** (`grading_results.xlsx`) with columns:
-    `No`, `Filename`, `Score`, `Feedback`, `Reasoning` *(if requested)*, `Error`.
-    """
-    return await controller.grade_batch(problems, files, rubric, with_reason)
+    return EventSourceResponse(
+        controller.grade_file_stream(problems, code, rubric, with_reason)
+    )
 
 
 @router.post(
@@ -157,10 +173,18 @@ async def route_grade_batch(
 )
 async def route_grade_batch_stream(
     controller: ControllerDep,
-    problems: str = Form(..., description="Problem statement applied to all submissions."),
-    files: UploadFile = File(..., description="Zip archive — one source file per student."),
-    rubric: str | None = Form(None, description="Custom rubric. Uses default if omitted."),
-    with_reason: bool = Form(False, description="Add a Reasoning column to the Excel output."),
+    problems: str = Form(
+        ..., description="Problem statement applied to all submissions."
+    ),
+    files: UploadFile = File(
+        ..., description="Zip archive — one source file per student."
+    ),
+    rubric: str | None = Form(
+        None, description="Custom rubric. Uses default if omitted."
+    ),
+    with_reason: bool = Form(
+        False, description="Add a Reasoning column to the Excel output."
+    ),
 ) -> EventSourceResponse:
     """Stream grading progress for a batch zip upload via **Server-Sent Events**.
 

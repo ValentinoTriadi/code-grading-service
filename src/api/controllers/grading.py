@@ -47,11 +47,15 @@ class GradingController:
         rubric: str | None,
         with_reason: bool,
     ) -> GradingResponse:
-        logger.info("grade_file — filename=%s, with_reason=%s", code.filename, with_reason)
+        logger.info(
+            "grade_file — filename=%s, with_reason=%s", code.filename, with_reason
+        )
         try:
             content = (await code.read()).decode("utf-8")
         except UnicodeDecodeError:
-            raise HTTPException(status_code=400, detail="File could not be decoded as UTF-8 text")
+            raise HTTPException(
+                status_code=400, detail="File could not be decoded as UTF-8 text"
+            )
 
         internal = GradingRequest(
             problem_description=problems,
@@ -80,17 +84,38 @@ class GradingController:
         queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
         async def on_progress_queued(step: int, total: int, message: str) -> None:
-            await queue.put({"data": json.dumps({"type": "progress", "step": step, "total": total, "message": message})})
+            await queue.put(
+                {
+                    "data": json.dumps(
+                        {
+                            "type": "progress",
+                            "step": step,
+                            "total": total,
+                            "message": message,
+                        }
+                    )
+                }
+            )
 
         async def run_pipeline() -> None:
             try:
-                result = await self.service.grade(internal, on_progress=on_progress_queued)
+                result = await self.service.grade(
+                    internal, on_progress=on_progress_queued
+                )
                 if not request.with_reason:
                     result.reasoning = None
-                await queue.put({"data": json.dumps({"type": "result", "data": result.model_dump()})})
+                await queue.put(
+                    {
+                        "data": json.dumps(
+                            {"type": "result", "data": result.model_dump()}
+                        )
+                    }
+                )
             except Exception as exc:
                 logger.error("grade_inline_stream error: %s", exc)
-                await queue.put({"data": json.dumps({"type": "error", "message": str(exc)})})
+                await queue.put(
+                    {"data": json.dumps({"type": "error", "message": str(exc)})}
+                )
             finally:
                 await queue.put(None)  # sentinel
 
@@ -110,11 +135,22 @@ class GradingController:
         with_reason: bool,
     ) -> AsyncGenerator[dict, None]:
         """SSE generator for file grading — same event shape as grade_inline_stream."""
-        logger.info("grade_file_stream — filename=%s, with_reason=%s", code.filename, with_reason)
+        logger.info(
+            "grade_file_stream — filename=%s, with_reason=%s",
+            code.filename,
+            with_reason,
+        )
         try:
             content = (await code.read()).decode("utf-8")
         except UnicodeDecodeError:
-            yield {"data": json.dumps({"type": "error", "message": "File could not be decoded as UTF-8 text"})}
+            yield {
+                "data": json.dumps(
+                    {
+                        "type": "error",
+                        "message": "File could not be decoded as UTF-8 text",
+                    }
+                )
+            }
             return
 
         internal = GradingRequest(
@@ -127,17 +163,36 @@ class GradingController:
         queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
         async def on_progress(step: int, total: int, message: str) -> None:
-            await queue.put({"data": json.dumps({"type": "progress", "step": step, "total": total, "message": message})})
+            await queue.put(
+                {
+                    "data": json.dumps(
+                        {
+                            "type": "progress",
+                            "step": step,
+                            "total": total,
+                            "message": message,
+                        }
+                    )
+                }
+            )
 
         async def run_pipeline() -> None:
             try:
                 result = await self.service.grade(internal, on_progress=on_progress)
                 if not with_reason:
                     result.reasoning = None
-                await queue.put({"data": json.dumps({"type": "result", "data": result.model_dump()})})
+                await queue.put(
+                    {
+                        "data": json.dumps(
+                            {"type": "result", "data": result.model_dump()}
+                        )
+                    }
+                )
             except Exception as exc:
                 logger.error("grade_file_stream error: %s", exc)
-                await queue.put({"data": json.dumps({"type": "error", "message": str(exc)})})
+                await queue.put(
+                    {"data": json.dumps({"type": "error", "message": str(exc)})}
+                )
             finally:
                 await queue.put(None)
 
@@ -156,13 +211,17 @@ class GradingController:
         rubric: str | None,
         with_reason: bool,
     ) -> StreamingResponse:
-        logger.info("grade_batch — zipfile=%s, with_reason=%s", files.filename, with_reason)
+        logger.info(
+            "grade_batch — zipfile=%s, with_reason=%s", files.filename, with_reason
+        )
         zip_bytes = await files.read()
 
         try:
             zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
         except zipfile.BadZipFile:
-            raise HTTPException(status_code=400, detail="Uploaded file is not a valid zip archive")
+            raise HTTPException(
+                status_code=400, detail="Uploaded file is not a valid zip archive"
+            )
 
         code_files = [
             name for name in zf.namelist() if self._is_supported_zip_entry(name)
@@ -178,7 +237,10 @@ class GradingController:
             try:
                 content = zf.read(filename).decode("utf-8")
             except UnicodeDecodeError:
-                results[idx] = {"filename": filename, "error": f"Could not decode {filename} as UTF-8"}
+                results[idx] = {
+                    "filename": filename,
+                    "error": f"Could not decode {filename} as UTF-8",
+                }
                 continue
 
             pending.append((idx, filename, content))
@@ -203,12 +265,16 @@ class GradingController:
             idx, entry = await task
             results[idx] = entry
 
-        excel_bytes = self._build_excel([r for r in results if r is not None], with_reason=with_reason)
+        excel_bytes = self._build_excel(
+            [r for r in results if r is not None], with_reason=with_reason
+        )
 
         return StreamingResponse(
             io.BytesIO(excel_bytes),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=grading_results.xlsx"},
+            headers={
+                "Content-Disposition": "attachment; filename=grading_results.xlsx"
+            },
         )
 
     async def grade_batch_stream(
@@ -220,18 +286,35 @@ class GradingController:
     ) -> AsyncGenerator[dict, None]:
         """SSE event generator: emits progress per file, then a final 'complete' event
         containing the Excel as base64 so the client can trigger the download."""
-        logger.info("grade_batch_stream — zipfile=%s, with_reason=%s", files.filename, with_reason)
+        logger.info(
+            "grade_batch_stream — zipfile=%s, with_reason=%s",
+            files.filename,
+            with_reason,
+        )
         zip_bytes = await files.read()
 
         try:
             zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
         except zipfile.BadZipFile:
-            yield {"data": json.dumps({"type": "error", "message": "Uploaded file is not a valid zip archive"})}
+            yield {
+                "data": json.dumps(
+                    {
+                        "type": "error",
+                        "message": "Uploaded file is not a valid zip archive",
+                    }
+                )
+            }
             return
 
-        code_files = [name for name in zf.namelist() if self._is_supported_zip_entry(name)]
+        code_files = [
+            name for name in zf.namelist() if self._is_supported_zip_entry(name)
+        ]
         if not code_files:
-            yield {"data": json.dumps({"type": "error", "message": "Zip archive contains no files"})}
+            yield {
+                "data": json.dumps(
+                    {"type": "error", "message": "Zip archive contains no files"}
+                )
+            }
             return
 
         total = len(code_files)
@@ -259,11 +342,16 @@ class GradingController:
             try:
                 content = zf.read(filename).decode("utf-8")
             except UnicodeDecodeError:
-                entry = {"filename": filename, "error": f"Could not decode {filename} as UTF-8"}
+                entry = {
+                    "filename": filename,
+                    "error": f"Could not decode {filename} as UTF-8",
+                }
                 results[idx] = entry
                 await queue.put((idx, entry))
                 continue
-            pending.append(asyncio.create_task(grade_and_notify(idx, filename, content)))
+            pending.append(
+                asyncio.create_task(grade_and_notify(idx, filename, content))
+            )
 
         for done_count in range(1, total + 1):
             _, entry = await queue.get()
@@ -275,13 +363,17 @@ class GradingController:
                 "score": entry.get("score"),
                 "error": entry.get("error"),
             }
-            logger.debug("Batch progress %d/%d — %s", done_count, total, entry["filename"])
+            logger.debug(
+                "Batch progress %d/%d — %s", done_count, total, entry["filename"]
+            )
             yield {"data": json.dumps(event)}
 
         if pending:
             await asyncio.gather(*pending)
 
-        excel_bytes = self._build_excel([r for r in results if r is not None], with_reason=with_reason)
+        excel_bytes = self._build_excel(
+            [r for r in results if r is not None], with_reason=with_reason
+        )
         excel_b64 = base64.b64encode(excel_bytes).decode()
         yield {"data": json.dumps({"type": "complete", "excel": excel_b64})}
         logger.info("Batch stream complete — %d file(s) graded", total)
@@ -349,7 +441,9 @@ class GradingController:
         headers.append("Error")
 
         header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_fill = PatternFill(
+            start_color="366092", end_color="366092", fill_type="solid"
+        )
 
         for col_idx, header in enumerate(headers, start=1):
             cell = ws.cell(row=1, column=col_idx, value=header)
@@ -359,12 +453,17 @@ class GradingController:
 
         for row_idx, result in enumerate(results, start=2):
             col = 1
-            ws.cell(row=row_idx, column=col, value=row_idx - 1); col += 1
-            ws.cell(row=row_idx, column=col, value=result.get("filename", "")); col += 1
-            ws.cell(row=row_idx, column=col, value=result.get("score")); col += 1
-            ws.cell(row=row_idx, column=col, value=result.get("feedback", "")); col += 1
+            ws.cell(row=row_idx, column=col, value=row_idx - 1)
+            col += 1
+            ws.cell(row=row_idx, column=col, value=result.get("filename", ""))
+            col += 1
+            ws.cell(row=row_idx, column=col, value=result.get("score"))
+            col += 1
+            ws.cell(row=row_idx, column=col, value=result.get("feedback", ""))
+            col += 1
             if with_reason:
-                ws.cell(row=row_idx, column=col, value=result.get("reasoning")); col += 1
+                ws.cell(row=row_idx, column=col, value=result.get("reasoning"))
+                col += 1
             ws.cell(row=row_idx, column=col, value=result.get("error", ""))
 
         for col in ws.columns:

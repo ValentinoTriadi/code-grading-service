@@ -34,6 +34,10 @@ class GeminiProvider(BaseLLMProvider):
         )
         if response.usage_metadata:
             m = response.usage_metadata
-            logger.info("Gemini usage — prompt=%d, candidates=%d, total=%d tokens",
-                        m.prompt_token_count, m.candidates_token_count, m.total_token_count)
+            logger.info(
+                "Gemini usage — prompt=%d, candidates=%d, total=%d tokens",
+                m.prompt_token_count,
+                m.candidates_token_count,
+                m.total_token_count,
+            )
         return response.text or ""

@@ -52,5 +52,7 @@ class PromptBuilder:
                 f"Penilaian:\n{ex.get('grading', '')}\n"
                 f"--- Akhir Contoh {i} ---"
             )
-        parts.append("\nGunakan format dan gaya penilaian yang konsisten dengan contoh di atas.")
+        parts.append(
+            "\nGunakan format dan gaya penilaian yang konsisten dengan contoh di atas."
+        )
         return "\n\n".join(parts)

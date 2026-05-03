@@ -8,7 +8,10 @@ def _make_orchestrator() -> PromptOrchestrator:
 
 
 def _make_request(**kwargs) -> GradingRequest:
-    defaults = dict(problem_description="Write a sum function", student_code="def sum(a,b): return a+b")
+    defaults = dict(
+        problem_description="Write a sum function",
+        student_code="def sum(a,b): return a+b",
+    )
     return GradingRequest(**{**defaults, **kwargs})
 
 
@@ -47,7 +50,13 @@ class TestPromptOrchestrator:
             assert "<FEEDBACK>" in prompt
 
     def test_build_includes_few_shot_when_provided(self):
-        examples = [{"problem": "Add two numbers", "code": "return a+b", "grading": "Score: 100"}]
+        examples = [
+            {
+                "problem": "Add two numbers",
+                "code": "return a+b",
+                "grading": "Score: 100",
+            }
+        ]
         prompt = _make_orchestrator().build(_make_request(few_shot_examples=examples))
 
         assert "Add two numbers" in prompt

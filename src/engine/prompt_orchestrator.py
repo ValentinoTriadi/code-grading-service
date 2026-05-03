@@ -37,8 +37,7 @@ _OUTPUT_FORMAT_WITH_REASON = (
     "[Gunakan Markdown. Tulis ringkasan penilaian yang konstruktif dan spesifik. "
     "Gunakan **bold** untuk poin penting, bullet list untuk kelebihan dan kekurangan, "
     "dan backtick untuk menyebut nama variabel atau fungsi.]\n"
-    "</FEEDBACK>\n\n"
-    + _FEEDBACK_JSON_SCHEMA
+    "</FEEDBACK>\n\n" + _FEEDBACK_JSON_SCHEMA
 )
 
 _OUTPUT_FORMAT_WITHOUT_REASON = (
@@ -49,8 +48,7 @@ _OUTPUT_FORMAT_WITHOUT_REASON = (
     "[Gunakan Markdown. Tulis ringkasan penilaian yang konstruktif dan spesifik. "
     "Gunakan **bold** untuk poin penting, bullet list untuk kelebihan dan kekurangan, "
     "dan backtick untuk menyebut nama variabel atau fungsi.]\n"
-    "</FEEDBACK>\n\n"
-    + _FEEDBACK_JSON_SCHEMA
+    "</FEEDBACK>\n\n" + _FEEDBACK_JSON_SCHEMA
 )
 
 
@@ -85,11 +83,15 @@ class PromptOrchestrator:
 
         sections.append(self._build_task_section(request))
         sections.append(
-            _OUTPUT_FORMAT_WITH_REASON if request.with_reason else _OUTPUT_FORMAT_WITHOUT_REASON
+            _OUTPUT_FORMAT_WITH_REASON
+            if request.with_reason
+            else _OUTPUT_FORMAT_WITHOUT_REASON
         )
 
         prompt = "\n\n".join(sections)
-        logger.debug("Prompt built — %d sections, %d chars total", len(sections), len(prompt))
+        logger.debug(
+            "Prompt built — %d sections, %d chars total", len(sections), len(prompt)
+        )
         return prompt
 
     def _build_task_section(self, request: GradingRequest) -> str:
