@@ -4,12 +4,12 @@ from pathlib import Path
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 DEFAULT_RUBRIC = (
-    "1. Kebenaran / Correctness (50%): Apakah kode menghasilkan output yang benar "
-    "dan memenuhi semua requirement soal?\n"
-    "2. Keterbacaan / Readability (25%): Apakah kode mudah dibaca? "
-    "(penamaan variabel, struktur, indentasi)\n"
-    "3. Efisiensi / Efficiency (25%): Apakah kode menggunakan pendekatan yang "
-    "efisien dan tidak redundan?"
+    "1. Correctness (50%): Does the code produce correct output and satisfy "
+    "every requirement stated in the problem?\n"
+    "2. Readability (25%): Is the code easy to read? "
+    "(naming, structure, indentation, comments where they help)\n"
+    "3. Efficiency (25%): Does the code use a reasonable approach without "
+    "unnecessary work or redundancy for the input sizes implied by the problem?"
 )
 
 
@@ -43,16 +43,16 @@ class PromptBuilder:
         if not examples:
             return ""
 
-        parts = ["Berikut adalah contoh penilaian yang diharapkan:\n"]
+        parts = ["Below are example gradings showing the expected style and rigor.\n"]
         for i, ex in enumerate(examples, start=1):
             parts.append(
-                f"--- Contoh {i} ---\n"
-                f"Soal: {ex.get('problem', '')}\n"
-                f"Kode Mahasiswa:\n```\n{ex.get('code', '')}\n```\n"
-                f"Penilaian:\n{ex.get('grading', '')}\n"
-                f"--- Akhir Contoh {i} ---"
+                f"--- Example {i} ---\n"
+                f"Problem: {ex.get('problem', '')}\n"
+                f"Student code:\n```\n{ex.get('code', '')}\n```\n"
+                f"Grading:\n{ex.get('grading', '')}\n"
+                f"--- End of example {i} ---"
             )
         parts.append(
-            "\nGunakan format dan gaya penilaian yang konsisten dengan contoh di atas."
+            "\nMatch the structure, depth, and tone of these examples in your own grading."
         )
         return "\n\n".join(parts)

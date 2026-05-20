@@ -10,6 +10,13 @@ class CriterionResult(BaseModel):
     comment: str = Field(description="Evaluator's comment for this criterion.")
 
 
+class ComplexityEstimate(BaseModel):
+    """Estimated time/space complexity of the submitted code."""
+
+    time: str = Field(description="Big-O time complexity, e.g. 'O(n)' or 'unknown'.")
+    space: str = Field(description="Big-O space complexity, e.g. 'O(1)' or 'unknown'.")
+
+
 class FeedbackDetail(BaseModel):
     """Structured breakdown of the grading feedback."""
 
@@ -21,6 +28,20 @@ class FeedbackDetail(BaseModel):
         default_factory=list,
         description="Specific, actionable improvement suggestions.",
     )
+    exemplary_points: list[str] = Field(
+        default_factory=list,
+        description="Things the submission did well. Empty if nothing stands out.",
+    )
+    complexity: ComplexityEstimate | None = Field(
+        default=None,
+        description="Estimated time/space complexity. None if not applicable.",
+    )
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Grader's confidence in the score, 0.0 to 1.0.",
+    )
 
 
 class GradingResponse(BaseModel):
@@ -30,31 +51,31 @@ class GradingResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "score": 85.0,
-                "feedback": "Fungsi bekerja dengan benar. Penamaan variabel bisa lebih deskriptif.",
+                "feedback": "The function works correctly. Parameter names could be more descriptive.",
                 "feedback_detail": {
-                    "summary": "Fungsi bekerja dengan benar. Penamaan variabel bisa lebih deskriptif.",
+                    "summary": "The function works correctly. Parameter names could be more descriptive.",
                     "criteria": [
                         {
-                            "name": "Kebenaran",
+                            "name": "Correctness",
                             "score": 50.0,
                             "max_score": 50.0,
-                            "comment": "Menghasilkan output yang benar untuk semua kasus.",
+                            "comment": "Produces the correct output for every test case.",
                         },
                         {
-                            "name": "Keterbacaan",
+                            "name": "Readability",
                             "score": 20.0,
                             "max_score": 25.0,
-                            "comment": "Nama fungsi jelas, tapi nama parameter bisa lebih deskriptif.",
+                            "comment": "Function name is clear, but parameter names `a` and `b` are not descriptive.",
                         },
                         {
-                            "name": "Efisiensi",
+                            "name": "Efficiency",
                             "score": 15.0,
                             "max_score": 25.0,
-                            "comment": "Pendekatan sudah efisien.",
+                            "comment": "The approach is already efficient for the input sizes given.",
                         },
                     ],
                     "suggestions": [
-                        "Gunakan nama parameter yang lebih deskriptif seperti `bilangan1` dan `bilangan2`."
+                        "Rename parameters `a` and `b` to something descriptive like `lhs` and `rhs`, or to domain-specific names if the problem implies them."
                     ],
                 },
                 "reasoning": None,

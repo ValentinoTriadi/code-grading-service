@@ -1,13 +1,13 @@
-Berikut adalah contoh penilaian yang diharapkan:
+Below are example gradings showing the expected style and rigor.
 
---- Contoh 1 ---
-Soal: {{example_1_problem}}
-Kode Mahasiswa:
+--- Example 1 ---
+Problem: {{example_1_problem}}
+Student code:
 ```
 {{example_1_code}}
 ```
-Penilaian:
+Grading:
 {{example_1_grading}}
---- Akhir Contoh 1 ---
+--- End of example 1 ---
 
-Gunakan format dan gaya penilaian yang konsisten dengan contoh di atas.
+Match the structure, depth, and tone of these examples in your own grading.

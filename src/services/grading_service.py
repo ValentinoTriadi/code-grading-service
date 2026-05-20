@@ -62,7 +62,7 @@ class GradingService:
 
         await emit(3)
         logger.info("Step 3/4: calling LLM")
-        raw = await self.llm_interface.generate(prompt)
+        raw = await self.llm_interface.generate(prompt.text)
 
         await emit(4)
         logger.debug("Step 4/4: parsing response")

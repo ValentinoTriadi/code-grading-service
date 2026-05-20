@@ -7,11 +7,11 @@ class InlineGradingRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "problems": "Buatlah fungsi yang menerima dua bilangan bulat dan mengembalikan jumlahnya.",
-                "code": "def tambah(a, b):\n    return a + b",
+                "problems": "Write a function that takes two integers and returns their sum.",
+                "code": "def add(a, b):\n    return a + b",
                 "rubric": (
-                    "1. Kebenaran (70%): Fungsi menghasilkan hasil yang benar untuk semua kasus.\n"
-                    "2. Keterbacaan (30%): Penamaan variabel jelas dan kode mudah dipahami."
+                    "1. Correctness (70%): The function returns the correct result for every test case.\n"
+                    "2. Readability (30%): Variable names are clear and the code is easy to understand."
                 ),
                 "with_reason": False,
             }

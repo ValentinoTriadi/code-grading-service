@@ -1,5 +1,5 @@
-Berikut adalah rubrik penilaian yang harus kamu gunakan:
+Below is the rubric you MUST use for this submission.
 
 {{rubric}}
 
-Gunakan rubrik di atas sebagai satu-satunya dasar penilaian. Jangan menambahkan kriteria di luar rubrik yang diberikan.
+This rubric is the only basis for the score and the per-criterion breakdown. Do not add criteria that are not listed, and do not skip criteria that are listed. The number and names of entries in the `criteria` array of your output MUST exactly match the rubric above.
