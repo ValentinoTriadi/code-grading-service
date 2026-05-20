@@ -23,9 +23,11 @@ Edge weights fit in `int`. Distances are accumulated in `long long`.
 
 Each group represents a different implementation approach. Within a group:
 
-- **1** = poor (bad style, magic numbers, inefficient)
-- **2** = acceptable (correct, some style issues)
-- **3** = good (clean, idiomatic)
+- **1** = poor (unclear naming, magic numbers, inefficient, or risks overflow)
+- **2** = acceptable (correct, minor readability rough edges)
+- **3** = good (clear names, clean control flow, safe sentinel handling)
+
+Stylistic choices like `using namespace std`, `LLONG_MAX` vs `std::numeric_limits<long long>::max()`, or `.first`/`.second` vs structured bindings are **not** penalized by themselves. What matters is whether the sentinel is used consistently and does not overflow when added to a distance.
 
 ---
 
@@ -35,9 +37,9 @@ For each iteration, linearly scan unvisited nodes for the minimum-distance one.
 
 | File | Quality | Notes |
 |------|---------|-------|
-| `dijkstra_a1.cpp` | Poor | `using namespace std`, raw `INT_MAX` arithmetic risks overflow |
-| `dijkstra_a2.cpp` | Acceptable | Correct, uses `LLONG_MAX`, but inner loop variable shadows outer |
-| `dijkstra_a3.cpp` | Good | Clean separation, `std::numeric_limits<long long>::max()` |
+| `dijkstra_a1.cpp` | Poor | Uses `INT_MAX` as the sentinel for `long long` distances — `dist[u] + w` overflows when relaxing |
+| `dijkstra_a2.cpp` | Acceptable | Correct, but inner loop variable shadows outer — hurts readability |
+| `dijkstra_a3.cpp` | Good | Clean separation of init / relax / extract-min, clear logic |
 
 ## Group B — `std::priority_queue` (binary heap)
 
@@ -47,7 +49,7 @@ Standard textbook implementation with a min-heap of `{dist, node}`.
 |------|---------|-------|
 | `dijkstra_b1.cpp` | Poor | Doesn't skip stale heap entries — slower but correct |
 | `dijkstra_b2.cpp` | Acceptable | Correct; `greater<>` comparator inline; no early exit |
-| `dijkstra_b3.cpp` | Good | Skips stale entries, uses `std::pair` and `decltype` cleanly |
+| `dijkstra_b3.cpp` | Good | Skips stale entries with a clear `dist[u] < d` guard, tight relaxation loop |
 
 ## Group C — `std::set<std::pair>` (ordered set)
 
@@ -56,7 +58,7 @@ Uses a `set<pair<long long,int>>` keyed on `{dist, node}` and erases-then-insert
 | File | Quality | Notes |
 |------|---------|-------|
 | `dijkstra_c1.cpp` | Acceptable | Correct, but rebuilds pair on every erase |
-| `dijkstra_c2.cpp` | Good | Clean erase/insert, structured bindings |
+| `dijkstra_c2.cpp` | Good | Clean erase/insert pattern with readable relaxation logic |
 
 ## Group D — Path reconstruction (parents array)
 

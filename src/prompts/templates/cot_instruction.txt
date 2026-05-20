@@ -1,12 +1,15 @@
-Lakukan penilaian secara bertahap dengan langkah-langkah berikut:
+Before you produce the final output, work through the submission step-by-step inside the `<THINKING>` block. Do not skip ahead to the score.
 
-1. **Pahami Soal**: Baca dan pahami deskripsi soal yang diberikan.
-2. **Analisis Kode**: Baca kode mahasiswa secara menyeluruh.
-3. **Evaluasi per Kriteria**: Untuk setiap kriteria di rubrik, tulis satu bullet point per kriteria dengan format TEPAT seperti ini (nama kriteria HARUS berada di baris yang sama dengan tanda `-`, bukan di baris baru):
-   - **Nama Kriteria (bobot%)**: Penjelasan evaluasi. **Skor**: X/Y
-4. **Hitung Skor**: Berdasarkan evaluasi per kriteria, tentukan skor akhir (0–100).
-5. **Tulis Umpan Balik**: Berikan umpan balik konstruktif yang spesifik dan actionable.
+Follow these stages, in order:
 
-PENTING: Jangan menempatkan nama kriteria di baris baru setelah `-`. Selalu tulis `- **Nama**: ...` dalam satu baris.
+1. **Understand the problem.** Restate, in one sentence, what the student was asked to do.
+2. **Read the code.** Identify the language, the overall approach, and any obvious correctness issues.
+3. **Separate intent from execution.** If the code has a localized syntax / parse / compile error, decide whether the algorithm's intent is still readable end-to-end. If yes, trace and judge Correctness on the intent the code clearly expresses, and surface the syntax / compile defect as a Code Quality deduction bounded by the −5/100 cap. If the code is so malformed that you cannot reconstruct the algorithm by reading, say so and apply full Correctness deductions.
+4. **Trace at least one example.** Mentally execute the code (mentally fixing any localized typo first) on a representative input from the problem and verify the output.
+5. **Evaluate each rubric criterion in turn.** For each criterion, write one bullet point in this exact one-line format:
+   - **<Criterion name> (weight%)**: <one-sentence judgment>. **Score**: X/Y
+   The bullet text MUST be on the same line as `-`. Never put a line break between `-` and the criterion name.
+6. **Reconcile the total.** Sum the per-criterion scores and confirm the final score is on a 0–100 scale.
+7. **Draft suggestions.** List the specific, actionable improvements you will surface to the student.
 
-Jangan langsung memberikan skor akhir. Tunjukkan proses penalaranmu terlebih dahulu.
+The `<THINKING>` block is for your reasoning only — the final structured output goes in `<RESULT>` afterwards.
