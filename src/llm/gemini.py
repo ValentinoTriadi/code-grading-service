@@ -9,7 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiProvider(BaseLLMProvider):
-    """LLM provider backed by the Google Gemini API."""
+    """LLM provider backed by the Google Gemini API.
+
+    Supports two auth modes:
+    - Vertex AI: pass `use_vertex=True` with `project` and `location` —
+      the SDK picks up Application Default Credentials
+      (`gcloud auth application-default login` for local dev, or the
+      runtime service account on GCP).
+    - AI Studio: pass `api_key` (from https://aistudio.google.com).
+    """
 
     def __init__(
         self,
@@ -17,8 +25,34 @@ class GeminiProvider(BaseLLMProvider):
         model: str,
         max_tokens: int = 4096,
         temperature: float = 0.0,
+        use_vertex: bool = False,
+        project: str | None = None,
+        location: str | None = None,
     ) -> None:
-        self.client = genai.Client(api_key=api_key)
+        if use_vertex:
+            if not project or not location:
+                raise ValueError(
+                    "Vertex AI mode requires GOOGLE_CLOUD_PROJECT and "
+                    "GOOGLE_CLOUD_LOCATION (set GEMINI_USE_VERTEX=false to "
+                    "fall back to API key auth)."
+                )
+            self.client = genai.Client(
+                vertexai=True, project=project, location=location
+            )
+            logger.info(
+                "GeminiProvider initialised on Vertex AI — project=%s location=%s",
+                project,
+                location,
+            )
+        else:
+            if not api_key:
+                raise ValueError(
+                    "AI Studio mode requires LLM_API_KEY (or set "
+                    "GEMINI_USE_VERTEX=true with project/location)."
+                )
+            self.client = genai.Client(api_key=api_key)
+            logger.info("GeminiProvider initialised on AI Studio (API key)")
+
         self.model_name = model
         self.config = types.GenerateContentConfig(
             max_output_tokens=max_tokens,

@@ -57,6 +57,9 @@ def get_llm_provider(cfg: Settings = Depends(get_settings)) -> BaseLLMProvider:
             model=cfg.llm_model_name,
             max_tokens=cfg.llm_max_tokens,
             temperature=cfg.llm_temperature,
+            use_vertex=cfg.gemini_use_vertex,
+            project=cfg.google_cloud_project or None,
+            location=cfg.google_cloud_location or None,
         )
 
     if provider == "anthropic":
