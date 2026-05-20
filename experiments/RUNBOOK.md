@@ -49,13 +49,61 @@ experiments/dataset/submissions.json before Phase 1.
 
 > Score against a single rubric per problem so accuracy comparisons are fair across scenarios. Use the same human grader for all 144 (or document inter-grader reliability separately).
 
-### 2. Get a Gemini API key
+### 2. Pick a Gemini backend — AI Studio (default) **or** Vertex AI
+
+The experiment runs on one of two Google batch backends. Pick one.
+
+**Option A — AI Studio (default).** Simple, no GCP setup; uses inline batch.
 
 ```bash
 export GEMINI_API_KEY=ya29-...   # or GOOGLE_API_KEY
 ```
 
 Get one from https://aistudio.google.com/app/apikey.
+
+**Option B — Vertex AI.** Authenticates via Application Default Credentials against a GCP project; uses GCS-backed batch. Required if you can't (or don't want to) manage an AI Studio API key, or you want to keep everything inside one GCP project. Setup, once:
+
+```bash
+# 1. Install gcloud + auth
+brew install --cask google-cloud-sdk
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project ta-project-492309
+
+# 2. Enable APIs
+gcloud services enable aiplatform.googleapis.com storage.googleapis.com \
+  --project=ta-project-492309
+
+# 3. Create a regional bucket in the SAME region as your Vertex calls
+#    (bucket names are globally unique — adjust if it collides)
+gsutil mb -p ta-project-492309 -l asia-southeast1 -b on \
+  gs://ta-project-492309-vertex-batch-sg
+```
+
+Then before running the experiment:
+
+```bash
+export EXPERIMENT_USE_VERTEX=true
+export GOOGLE_CLOUD_PROJECT=ta-project-492309
+export GOOGLE_CLOUD_LOCATION=asia-southeast1
+export EXPERIMENT_GCS_BUCKET=gs://ta-project-492309-vertex-batch-sg
+# GEMINI_API_KEY is unused when EXPERIMENT_USE_VERTEX=true.
+```
+
+The experiment will upload one `input.jsonl` per scenario to
+`gs://<bucket>/phase1-<S?>/input.jsonl`, submit a Vertex Batch job, and
+read the results back from `gs://<bucket>/phase1-<S?>/output/`. A
+`run_ids.json` sidecar is written alongside each input so responses can be
+matched back to cells (Vertex Batch preserves input row order but has no
+per-row metadata field).
+
+> **Region tip.** Keep the bucket and `GOOGLE_CLOUD_LOCATION` in the same
+> region — cross-region GCS reads add latency and per-GB egress charges.
+> Verify model availability in your region:
+>
+> ```bash
+> python -c "from google import genai; print(genai.Client(vertexai=True, project='ta-project-492309', location='asia-southeast1').models.generate_content(model='gemini-2.5-flash', contents='ping').text)"
+> ```
 
 ### 3. (Optional) Install `pingouin` and `statsmodels` for richer analysis
 
@@ -78,7 +126,11 @@ All via env vars — no code edits needed for tuning.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `GEMINI_API_KEY` | — | **Required.** Your Google AI Studio key. |
+| `GEMINI_API_KEY` | — | Required in AI Studio mode (Option A). Unused on Vertex. |
+| `EXPERIMENT_USE_VERTEX` | `false` | Set `true` to route through Vertex Batch instead of AI Studio Batch. |
+| `GOOGLE_CLOUD_PROJECT` | — | Required when `EXPERIMENT_USE_VERTEX=true`. |
+| `GOOGLE_CLOUD_LOCATION` | `asia-southeast1` | Vertex region. Must match the GCS bucket region for no egress. |
+| `EXPERIMENT_GCS_BUCKET` | — | Required when `EXPERIMENT_USE_VERTEX=true`. `gs://bucket-name` or `gs://bucket/prefix`. |
 | `EXPERIMENT_MODEL` | `gemini-2.5-flash` | Use `gemini-2.5-pro` for higher quality (~5× more expensive). |
 | `EXPERIMENT_TEMPERATURE` | `0.5` | Must be > 0 or Phase 2 ICC will artificially inflate (no variance). |
 | `EXPERIMENT_MAX_OUTPUT_TOKENS` | `2500` | Cap on response length. CoT scenarios use ~1,500 of this. |

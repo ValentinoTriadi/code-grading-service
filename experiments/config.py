@@ -25,11 +25,44 @@ POLL_TIMEOUT_HOURS = int(os.environ.get("EXPERIMENT_POLL_TIMEOUT_HOURS", "24"))
 
 FEW_SHOT_COUNT = int(os.environ.get("EXPERIMENT_FEW_SHOT_COUNT", "2"))
 
+# Vertex AI mode — opt-in via env. When true, the experiment authenticates
+# through Application Default Credentials and uses Vertex Batch (which
+# requires a GCS bucket for input + output JSONL). Otherwise the experiment
+# uses the AI Studio API key path with inline batch requests.
+USE_VERTEX = os.environ.get("EXPERIMENT_USE_VERTEX", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+GCP_PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+GCP_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "asia-southeast1")
+GCS_BUCKET = os.environ.get("EXPERIMENT_GCS_BUCKET", "")
+
 
 def get_api_key() -> str:
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key:
         raise RuntimeError(
-            "Set GEMINI_API_KEY (or GOOGLE_API_KEY) before running the experiment."
+            "Set GEMINI_API_KEY (or GOOGLE_API_KEY) before running the experiment "
+            "in AI Studio mode (or set EXPERIMENT_USE_VERTEX=true with the Vertex "
+            "env block)."
         )
     return key
+
+
+def assert_vertex_config() -> None:
+    """Raise if EXPERIMENT_USE_VERTEX=true but project/location/bucket missing."""
+    missing = [
+        name
+        for name, val in [
+            ("GOOGLE_CLOUD_PROJECT", GCP_PROJECT),
+            ("GOOGLE_CLOUD_LOCATION", GCP_LOCATION),
+            ("EXPERIMENT_GCS_BUCKET", GCS_BUCKET),
+        ]
+        if not val
+    ]
+    if missing:
+        raise RuntimeError(
+            "EXPERIMENT_USE_VERTEX=true requires " + ", ".join(missing) + ". "
+            "See experiments/RUNBOOK.md § Vertex Batch setup."
+        )
