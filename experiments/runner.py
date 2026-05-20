@@ -284,6 +284,15 @@ def _ingest_batch(
 
 
 def run_phase1(s: state.ExperimentState) -> state.ExperimentState:
+    """Run Phase 1: submit ALL 8 scenarios up-front, then poll + fetch each.
+
+    The two passes are the key win — submitting all batches first lets them
+    run in parallel on Google's infrastructure. Wall time then becomes
+    `submit_time + max(batch_duration)` instead of
+    `sum(submit + batch_duration)` per scenario, which is roughly an 8×
+    speed-up for the typical case where every scenario finishes within
+    minutes of the slowest one.
+    """
     problems, submissions, few_shot_pool = load_dataset()
     assert_human_scores(submissions)
     problems_by_id = {p["problem_id"]: p for p in problems}
@@ -292,6 +301,9 @@ def run_phase1(s: state.ExperimentState) -> state.ExperimentState:
     completed = state.load_completed_run_ids(PHASE1_RESULTS)
     logger.info("Phase 1 — %d run_ids already in %s", len(completed), PHASE1_RESULTS.name)
 
+    # Pass 1 — submit (or recover) every batch up-front so they all run
+    # concurrently on the provider side.
+    pending_ingest: dict[str, list[Cell]] = {}
     for scenario in SCENARIOS:
         entry = s.phase1.batches.get(scenario.id) or state.BatchEntry()
         if entry.status in {"JOB_STATE_FAILED", "JOB_STATE_CANCELLED", "FAILED"}:
@@ -316,14 +328,26 @@ def run_phase1(s: state.ExperimentState) -> state.ExperimentState:
         )
         s.phase1.batches[scenario.id] = entry
         state.save_state(s)
-
         if cells_in_batch and entry.batch_name and entry.status != "SUCCEEDED":
-            ok, bad = _ingest_batch(client, entry, cells_in_batch, PHASE1_RESULTS)
-            logger.info(
-                "Phase 1 — scenario %s: %d ok, %d failed", scenario.id, ok, bad
-            )
-            s.phase1.batches[scenario.id] = entry
-            state.save_state(s)
+            pending_ingest[scenario.id] = cells_in_batch
+
+    logger.info(
+        "Phase 1 — submitted/recovered %d batch(es); now polling in parallel",
+        len(pending_ingest),
+    )
+
+    # Pass 2 — poll + fetch each batch. Polls are sequential in code, but the
+    # batches are all running concurrently server-side; once the slowest is
+    # done, the others are too, so the second/third/... poll usually returns
+    # SUCCEEDED on the first GET.
+    for scenario_id, cells_in_batch in pending_ingest.items():
+        entry = s.phase1.batches[scenario_id]
+        ok, bad = _ingest_batch(client, entry, cells_in_batch, PHASE1_RESULTS)
+        logger.info(
+            "Phase 1 — scenario %s: %d ok, %d failed", scenario_id, ok, bad
+        )
+        s.phase1.batches[scenario_id] = entry
+        state.save_state(s)
 
     if not all(e.status == "SUCCEEDED" for e in s.phase1.batches.values()):
         logger.warning("Phase 1 incomplete — some batches not in SUCCEEDED state")
