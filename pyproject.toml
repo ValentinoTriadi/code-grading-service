@@ -1,7 +1,7 @@
 [project]
 name = "code-grading-service"
 version = "0.1.0"
-description = "Layanan penilaian kode program berbasis LLM dengan Prompt Engineering"
+description = "LLM-powered code grading service with structured prompt engineering"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -11,6 +11,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "openpyxl>=3.1.0",
     "openai>=1.0.0",
+    "anthropic>=0.40.0",
     "pytest>=9.0.2",
     "google-genai>=1.70.0",
     "sse-starlette>=3.3.4",

@@ -59,9 +59,19 @@ def get_llm_provider(cfg: Settings = Depends(get_settings)) -> BaseLLMProvider:
             temperature=cfg.llm_temperature,
         )
 
+    if provider == "anthropic":
+        from src.llm.anthropic import AnthropicProvider
+
+        return AnthropicProvider(
+            api_key=cfg.llm_api_key,
+            model=cfg.llm_model_name,
+            max_tokens=cfg.llm_max_tokens,
+            temperature=cfg.llm_temperature,
+        )
+
     raise ValueError(
         f"Unsupported LLM provider: '{cfg.llm_provider}'. "
-        "Set LLM_PROVIDER to 'openai' or 'gemini' in your .env file."
+        "Set LLM_PROVIDER to 'openai', 'gemini', or 'anthropic' in your .env file."
     )
 
 
