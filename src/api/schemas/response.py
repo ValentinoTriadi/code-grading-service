@@ -14,7 +14,7 @@ class ComplexityEstimate(BaseModel):
     """Estimated time/space complexity of the submitted code."""
 
     time: str = Field(description="Big-O time complexity, e.g. 'O(n)' or 'unknown'.")
-    space: str = Field(description="Big-O space complexity, e.g. 'O(1)' or 'unknown'.")
+    space: str = Field(default="unknown", description="Big-O space complexity, e.g. 'O(1)' or 'unknown'.")
 
 
 class FeedbackDetail(BaseModel):

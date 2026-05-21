@@ -75,10 +75,14 @@ class ResponseParser:
         try:
             data = json.loads(cleaned)
         except json.JSONDecodeError:
-            logger.warning(
-                "RESULT block is not valid JSON — falling back to legacy parser"
-            )
-            return None
+            data = self._try_repair_json(cleaned)
+            if data is None:
+                logger.warning(
+                    "RESULT block is not valid JSON and could not be repaired — "
+                    "falling back to legacy parser"
+                )
+                return None
+            logger.warning("RESULT block was truncated — repaired and parsed partially")
 
         if not isinstance(data, dict):
             return None
@@ -116,7 +120,59 @@ class ResponseParser:
                 "Malformed opening tag <%s> (missing '>') — using tolerant parser", tag
             )
             return match.group(1)
+        # Final fallback: opening tag present but closing tag missing — return
+        # everything after the opening tag so the caller can attempt JSON repair.
+        match = re.search(rf"<{tag}>(.*)", text, re.DOTALL | re.IGNORECASE)
+        if match:
+            logger.warning(
+                "Missing closing </%s> tag — attempting truncation recovery", tag
+            )
+            return match.group(1)
         return None
+
+    @staticmethod
+    def _try_repair_json(text: str) -> dict | None:
+        """Close a truncated JSON object by appending missing brackets.
+
+        Handles the case where the model stopped generating mid-JSON (e.g. the
+        response ends at `"time": "O(n)",` without closing the outer object).
+        Strips trailing commas and whitespace, then counts unclosed `{`/`[` pairs
+        and appends the matching closers.
+        """
+        text = text.rstrip()
+        # Strip any trailing commas left by truncation.
+        while text.endswith(","):
+            text = text[:-1].rstrip()
+        if not text:
+            return None
+
+        # Walk the string tracking open bracket depth (skip string contents).
+        stack: list[str] = []
+        in_string = False
+        escape = False
+        for ch in text:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\" and in_string:
+                escape = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch in "{[":
+                stack.append("}" if ch == "{" else "]")
+            elif ch in "}]" and stack:
+                stack.pop()
+
+        closing = "".join(reversed(stack))
+        try:
+            result = json.loads(text + closing)
+            return result if isinstance(result, dict) else None
+        except json.JSONDecodeError:
+            return None
 
     @staticmethod
     def _strip_code_fence(text: str) -> str:
