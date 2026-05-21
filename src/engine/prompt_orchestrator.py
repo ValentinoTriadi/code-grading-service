@@ -66,6 +66,9 @@ _OUTPUT_RULES_HEADER = (
     "containing valid JSON that matches the schema below. Nothing may follow "
     "the closing `</RESULT>` tag.\n\n"
     "Hard requirements:\n"
+    "- The response MUST start with `<THINKING>` (when reasoning is requested) "
+    "or `<RESULT>` (when not). Do not output anything before the opening tag.\n"
+    "- Output exactly one `<RESULT>` block.\n"
     "- The JSON must parse with a standard JSON parser. No trailing commas, "
     "no comments, no `undefined`.\n"
     "- All string values must be valid JSON strings — escape `\"`, `\\`, and "
@@ -80,6 +83,8 @@ _OUTPUT_RULES_HEADER = (
     "or `\"unknown\"`. Estimate from the code as written, not from the canonical solution.\n"
     "- `confidence` is a float in [0.0, 1.0] reflecting how sure you are of the score. "
     "Lower it when the code is ambiguous, partial, or relies on assumptions you had to make.\n"
+    "- If you are running out of space, shorten `<THINKING>` first; never omit or truncate `<RESULT>`.\n"
+    "- The final character of the response MUST be the `>` from `</RESULT>`.\n"
     "- Do NOT wrap the `<RESULT>` block in code fences. Do NOT add prose after "
     "`</RESULT>`.\n"
 )
@@ -88,7 +93,7 @@ _OUTPUT_FORMAT_WITH_REASON = (
     _OUTPUT_RULES_HEADER
     + "- Before `<RESULT>`, emit a `<THINKING>...</THINKING>` block containing "
     "your step-by-step reasoning. The thinking block is for analysis only — "
-    "do NOT put the final score there.\n\n"
+    "do NOT put the final score there. Do NOT output the word THINKING without tags.\n\n"
     "Response shape (in this exact order):\n\n"
     "<THINKING>\n"
     "[Your step-by-step reasoning, following the chain-of-thought instructions above.]\n"
@@ -98,7 +103,8 @@ _OUTPUT_FORMAT_WITH_REASON = (
 
 _OUTPUT_FORMAT_WITHOUT_REASON = (
     _OUTPUT_RULES_HEADER
-    + "- Do NOT include any `<THINKING>` block — go straight to `<RESULT>`.\n\n"
+    + "- Do NOT include any `<THINKING>` block — go straight to `<RESULT>`.\n"
+    "- Output MUST start with `<RESULT>` on the first line.\n\n"
     "Response shape:\n\n"
     + _RESULT_SCHEMA
 )
@@ -156,5 +162,9 @@ class PromptOrchestrator:
         return (
             f"# Submission to grade\n\n"
             f"## Problem\n{request.problem_description}\n\n"
-            f"## Student code\n```\n{request.student_code}\n```"
+            f"## Student code\n```\n{request.student_code}\n```\n\n"
+            f"## Output reminder\n"
+            f"- Start with <THINKING> (if requested) or <RESULT> (if not).\n"
+            f"- End with </RESULT> and nothing after.\n"
+            f"- If you must shorten, shorten <THINKING> and keep <RESULT> complete."
         )

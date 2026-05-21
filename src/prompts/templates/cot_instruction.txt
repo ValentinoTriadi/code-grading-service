@@ -1,4 +1,6 @@
 Before you produce the final output, work through the submission step-by-step inside the `<THINKING>` block. Do not skip ahead to the score.
+Keep the `<THINKING>` block concise. Use short bullets or short paragraphs and avoid repeating the rubric or the full prompt.
+Never output the word THINKING without the `<THINKING>` tag, and never emit more than one `<THINKING>` block.
 
 Follow these stages, in order:
 
@@ -11,5 +13,7 @@ Follow these stages, in order:
    The bullet text MUST be on the same line as `-`. Never put a line break between `-` and the criterion name.
 6. **Reconcile the total.** Sum the per-criterion scores and confirm the final score is on a 0–100 scale.
 7. **Draft suggestions.** List the specific, actionable improvements you will surface to the student.
+
+If you are running out of space, shorten `<THINKING>` aggressively (even to a single sentence), but still output a complete `<RESULT>` block.
 
 The `<THINKING>` block is for your reasoning only — the final structured output goes in `<RESULT>` afterwards.
