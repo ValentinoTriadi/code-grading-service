@@ -214,3 +214,5 @@ __marimo__/
 # similar, and let Application Default Credentials live in ~/.config/gcloud/.
 google-cloud-sdk/
 google-cloud-cli-*.tar.gz
+
+.env.experiment
