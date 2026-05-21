@@ -19,9 +19,21 @@ PHASE2_RESULTS = RESULTS_DIR / "phase2.jsonl"
 GEMINI_MODEL = os.environ.get("EXPERIMENT_MODEL", "gemini-2.5-flash")
 GEMINI_TEMPERATURE = float(os.environ.get("EXPERIMENT_TEMPERATURE", "0.5"))
 GEMINI_MAX_OUTPUT_TOKENS = int(os.environ.get("EXPERIMENT_MAX_OUTPUT_TOKENS", "2500"))
+# Optional override for CoT-heavy scenarios that need more output space.
+GEMINI_MAX_OUTPUT_TOKENS_COT = int(
+    os.environ.get("EXPERIMENT_MAX_OUTPUT_TOKENS_COT", str(GEMINI_MAX_OUTPUT_TOKENS))
+)
 
 POLL_INTERVAL_SECONDS = int(os.environ.get("EXPERIMENT_POLL_INTERVAL", "60"))
 POLL_TIMEOUT_HOURS = int(os.environ.get("EXPERIMENT_POLL_TIMEOUT_HOURS", "24"))
+
+# When false, the runner bypasses Gemini Batch and calls the model directly.
+USE_BATCH = os.environ.get("EXPERIMENT_USE_BATCH", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+DIRECT_CONCURRENCY = int(os.environ.get("EXPERIMENT_DIRECT_CONCURRENCY", "6"))
 
 FEW_SHOT_COUNT = int(os.environ.get("EXPERIMENT_FEW_SHOT_COUNT", "2"))
 

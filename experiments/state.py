@@ -95,8 +95,11 @@ def save_state(state: ExperimentState) -> None:
     STATE_FILE.write_text(json.dumps(payload, indent=2))
 
 
-def load_completed_run_ids(path: Path) -> set[str]:
-    """Read a phase JSONL and return the set of run_ids already persisted."""
+def load_completed_run_ids(path: Path, *, require_schema_valid: bool = False) -> set[str]:
+    """Read a phase JSONL and return the set of run_ids already persisted.
+
+    If require_schema_valid is True, only rows with schema_valid=true are returned.
+    """
     if not path.exists():
         return set()
     seen: set[str] = set()
@@ -107,6 +110,8 @@ def load_completed_run_ids(path: Path) -> set[str]:
                 continue
             try:
                 row = json.loads(line)
+                if require_schema_valid and not row.get("schema_valid"):
+                    continue
                 rid = row.get("run_id")
                 if rid:
                     seen.add(rid)

@@ -29,6 +29,7 @@ import hashlib
 import json
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Any
@@ -43,6 +44,7 @@ from experiments.config import (
     GCP_LOCATION,
     GCP_PROJECT,
     GCS_BUCKET,
+    DIRECT_CONCURRENCY,
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_MODEL,
     GEMINI_TEMPERATURE,
@@ -92,6 +94,8 @@ class BatchRequest:
 
     prompt: str
     run_id: str
+    max_output_tokens: int | None = None
+    temperature: float | None = None
 
 
 # --- client construction ---------------------------------------------------
@@ -118,7 +122,13 @@ def get_client() -> genai.Client:
     return genai.Client(api_key=get_api_key())
 
 
-def build_inline_request(prompt: str, run_id: str) -> BatchRequest:
+def build_inline_request(
+    prompt: str,
+    run_id: str,
+    *,
+    max_output_tokens: int | None = None,
+    temperature: float | None = None,
+) -> BatchRequest:
     """Provider-agnostic request builder.
 
     The name is kept for runner compatibility — historically this returned
@@ -126,7 +136,12 @@ def build_inline_request(prompt: str, run_id: str) -> BatchRequest:
     happens inside `_submit_batch_aistudio` so the runner stays unaware of
     which backend is active.
     """
-    return BatchRequest(prompt=prompt, run_id=run_id)
+    return BatchRequest(
+        prompt=prompt,
+        run_id=run_id,
+        max_output_tokens=max_output_tokens,
+        temperature=temperature,
+    )
 
 
 # --- batch submission ------------------------------------------------------
@@ -160,8 +175,14 @@ def _submit_batch_aistudio(
                 types.Content(role="user", parts=[types.Part.from_text(text=r.prompt)])
             ],
             config=types.GenerateContentConfig(
-                temperature=GEMINI_TEMPERATURE,
-                max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS,
+                temperature=(
+                    r.temperature if r.temperature is not None else GEMINI_TEMPERATURE
+                ),
+                max_output_tokens=(
+                    r.max_output_tokens
+                    if r.max_output_tokens is not None
+                    else GEMINI_MAX_OUTPUT_TOKENS
+                ),
             ),
             metadata={"run_id": r.run_id},
         )
@@ -210,8 +231,16 @@ def _submit_batch_vertex(
                         {"role": "user", "parts": [{"text": r.prompt}]}
                     ],
                     "generation_config": {
-                        "temperature": GEMINI_TEMPERATURE,
-                        "max_output_tokens": GEMINI_MAX_OUTPUT_TOKENS,
+                        "temperature": (
+                            r.temperature
+                            if r.temperature is not None
+                            else GEMINI_TEMPERATURE
+                        ),
+                        "max_output_tokens": (
+                            r.max_output_tokens
+                            if r.max_output_tokens is not None
+                            else GEMINI_MAX_OUTPUT_TOKENS
+                        ),
                     },
                 }
             }
@@ -321,6 +350,81 @@ def fetch_results(job: types.BatchJob) -> list[dict]:
     if USE_VERTEX:
         return _fetch_results_vertex(job)
     return _fetch_results_aistudio(job)
+
+
+# --- direct inference ------------------------------------------------------
+
+
+def _build_generate_config(request: BatchRequest) -> types.GenerateContentConfig:
+    return types.GenerateContentConfig(
+        temperature=(
+            request.temperature
+            if request.temperature is not None
+            else GEMINI_TEMPERATURE
+        ),
+        max_output_tokens=(
+            request.max_output_tokens
+            if request.max_output_tokens is not None
+            else GEMINI_MAX_OUTPUT_TOKENS
+        ),
+    )
+
+
+def generate_direct(
+    client: genai.Client,
+    requests: list[BatchRequest],
+    concurrency: int | None = None,
+) -> list[dict]:
+    """Run direct (non-batch) generation for a list of requests.
+
+    Returns rows shaped like `fetch_results` for compatibility with the runner.
+    """
+    if not requests:
+        return []
+
+    max_workers = max(1, int(concurrency or DIRECT_CONCURRENCY or 1))
+
+    _DIRECT_RETRY_ERRORS: tuple[type[Exception], ...] = (
+        httpx.ReadTimeout,
+        httpx.ConnectTimeout,
+        httpx.ConnectError,
+        httpx.RemoteProtocolError,
+        httpx.ReadError,
+        gax_exceptions.ServiceUnavailable,
+        gax_exceptions.DeadlineExceeded,
+    )
+    _MAX_DIRECT_ATTEMPTS = 3
+
+    def _run_one(req: BatchRequest) -> dict:
+        for attempt in range(_MAX_DIRECT_ATTEMPTS):
+            try:
+                response = client.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=req.prompt,
+                    config=_build_generate_config(req),
+                )
+                return _row_from_response(req.run_id, response)
+            except _DIRECT_RETRY_ERRORS as exc:
+                if attempt < _MAX_DIRECT_ATTEMPTS - 1:
+                    wait = 10 * (2 ** attempt)
+                    logger.warning(
+                        "Direct generation transient error for %s (attempt %d/%d, retry in %ds): %s",
+                        req.run_id, attempt + 1, _MAX_DIRECT_ATTEMPTS, wait, exc,
+                    )
+                    time.sleep(wait)
+                else:
+                    logger.error("Direct generation failed for %s after %d attempts: %s", req.run_id, _MAX_DIRECT_ATTEMPTS, exc)
+                    return _error_row(req.run_id, f"direct_error: {exc!r}")
+            except Exception as exc:
+                logger.error("Direct generation failed for %s: %s", req.run_id, exc)
+                return _error_row(req.run_id, f"direct_error: {exc!r}")
+
+    rows: list[dict] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(_run_one, r) for r in requests]
+        for fut in as_completed(futures):
+            rows.append(fut.result())
+    return rows
 
 
 def _fetch_results_aistudio(job: types.BatchJob) -> list[dict]:

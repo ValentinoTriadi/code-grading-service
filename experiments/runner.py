@@ -32,7 +32,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
+from pathlib import Path
 from dataclasses import dataclass
 
 from src.engine.response_parser import ResponseParser
@@ -40,15 +42,20 @@ from src.engine.response_parser import ResponseParser
 from experiments import analysis, state
 from experiments.config import (
     DATASET_DIR,
+    DIRECT_CONCURRENCY,
     FEW_SHOT_COUNT,
+    GEMINI_MAX_OUTPUT_TOKENS,
+    GEMINI_MAX_OUTPUT_TOKENS_COT,
     PHASE1_RESULTS,
     PHASE2_RESULTS,
     RESULTS_DIR,
     STATE_FILE,
+    USE_BATCH,
 )
 from experiments.gemini_batch import (
     build_inline_request,
     fetch_results,
+    generate_direct,
     get_client,
     poll_batch,
     submit_batch,
@@ -74,6 +81,7 @@ class Cell:
     submission_id: str
     replicate: int
     prompt: str
+    max_output_tokens: int | None = None
 
 
 # --- dataset ---------------------------------------------------------------
@@ -106,6 +114,11 @@ def _phase1_cells_for_scenario(
     few_shot_pool: list[dict],
 ) -> list[Cell]:
     cells: list[Cell] = []
+    max_tokens = (
+        GEMINI_MAX_OUTPUT_TOKENS_COT
+        if scenario.cot
+        else GEMINI_MAX_OUTPUT_TOKENS
+    )
     for sub in submissions:
         problem = problems_by_id[sub["problem_id"]]
         prompt = build_full_prompt(scenario, problem, sub, few_shot_pool, FEW_SHOT_COUNT)
@@ -119,6 +132,7 @@ def _phase1_cells_for_scenario(
                     submission_id=sub["submission_id"],
                     replicate=r,
                     prompt=prompt,
+                    max_output_tokens=max_tokens,
                 )
             )
     return cells
@@ -132,6 +146,11 @@ def _phase2_cells(
     few_shot_pool: list[dict],
 ) -> list[Cell]:
     cells: list[Cell] = []
+    max_tokens = (
+        GEMINI_MAX_OUTPUT_TOKENS_COT
+        if scenario.cot
+        else GEMINI_MAX_OUTPUT_TOKENS
+    )
     for sub in submissions:
         if sub["problem_id"] != worst_case_id:
             continue
@@ -147,12 +166,84 @@ def _phase2_cells(
                     submission_id=sub["submission_id"],
                     replicate=r,
                     prompt=prompt,
+                    max_output_tokens=max_tokens,
                 )
             )
     return cells
 
 
 # --- result row construction ----------------------------------------------
+
+
+_RESULT_BLOCK_RE = re.compile(r"<RESULT>(.*?)</RESULT>", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_code_fence(text: str) -> str:
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-zA-Z0-9_]*\s*\n?", "", text)
+        text = re.sub(r"\n?```\s*$", "", text)
+    return text.strip()
+
+
+def _detect_schema_error(text: str) -> str | None:
+    if "<RESULT>" not in text:
+        return "missing_result_block"
+    if "</RESULT>" not in text:
+        return "unterminated_result_block"
+    match = _RESULT_BLOCK_RE.search(text)
+    if not match:
+        return "missing_result_block"
+    raw = _strip_code_fence(match.group(1).strip())
+    try:
+        json.loads(raw)
+    except json.JSONDecodeError:
+        return "invalid_result_json"
+    return None
+
+
+def _max_tokens_for_scenario(scenario_id: str | None) -> int:
+    if scenario_id and scenario_id in SCENARIOS_BY_ID:
+        return (
+            GEMINI_MAX_OUTPUT_TOKENS_COT
+            if SCENARIOS_BY_ID[scenario_id].cot
+            else GEMINI_MAX_OUTPUT_TOKENS
+        )
+    return GEMINI_MAX_OUTPUT_TOKENS
+
+
+def _annotate_results_file(path: Path, *, in_place: bool) -> tuple[Path, int]:
+    rows = state.load_results(path)
+    updated = 0
+    out_rows: list[dict] = []
+    for row in rows:
+        if row.get("schema_valid"):
+            out_rows.append(row)
+            continue
+        if row.get("error"):
+            out_rows.append(row)
+            continue
+        text = row.get("raw_response") or ""
+        if not text:
+            row["error"] = "empty_response"
+            out_rows.append(row)
+            updated += 1
+            continue
+        schema_error = _detect_schema_error(text)
+        max_tokens = _max_tokens_for_scenario(row.get("scenario_id"))
+        tokens_out = int(row.get("tokens_out", 0) or 0)
+        if schema_error and tokens_out >= max_tokens - 1:
+            row["error"] = f"truncated_output:{schema_error}"
+        else:
+            row["error"] = schema_error or "schema_invalid"
+        out_rows.append(row)
+        updated += 1
+
+    out_path = path if in_place else path.with_name(f"{path.stem}.annotated.jsonl")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
+        for row in out_rows:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return out_path, updated
 
 
 def _row_from_response(cell: Cell, batch_row: dict) -> dict:
@@ -163,6 +254,7 @@ def _row_from_response(cell: Cell, batch_row: dict) -> dict:
     schema_valid = False
     score = 0.0
     criterion_scores: list[dict] = []
+    tokens_out = batch_row.get("tokens_out", 0)
     if text and not err:
         try:
             parsed = PARSER.parse(text)
@@ -180,6 +272,14 @@ def _row_from_response(cell: Cell, batch_row: dict) -> dict:
         except Exception as exc:  # pragma: no cover — parsing failure
             err = err or f"parse_error: {exc!r}"
 
+    if not schema_valid and not err and text:
+        schema_error = _detect_schema_error(text)
+        max_tokens = cell.max_output_tokens or GEMINI_MAX_OUTPUT_TOKENS
+        if schema_error and tokens_out >= max_tokens - 1:
+            err = f"truncated_output:{schema_error}"
+        else:
+            err = schema_error or "schema_invalid"
+
     return {
         "run_id": cell.run_id,
         "phase": cell.phase,
@@ -191,7 +291,7 @@ def _row_from_response(cell: Cell, batch_row: dict) -> dict:
         "criterion_scores": criterion_scores,
         "raw_response": text,
         "tokens_in": batch_row.get("tokens_in", 0),
-        "tokens_out": batch_row.get("tokens_out", 0),
+        "tokens_out": tokens_out,
         "cached_tokens": batch_row.get("cached_tokens", 0),
         "schema_valid": schema_valid,
         "error": err,
@@ -223,7 +323,14 @@ def _ensure_batch_submitted(
         # Already submitted — caller will poll/fetch.
         return pending, entry
 
-    inline_requests = [build_inline_request(c.prompt, c.run_id) for c in pending]
+    inline_requests = [
+        build_inline_request(
+            c.prompt,
+            c.run_id,
+            max_output_tokens=c.max_output_tokens,
+        )
+        for c in pending
+    ]
     batch_name = submit_batch(client, inline_requests, display_name=display_name)
     entry.batch_name = batch_name
     entry.status = "RUNNING"
@@ -280,10 +387,59 @@ def _ingest_batch(
     return succeeded, failed
 
 
+def _ingest_direct(
+    client,
+    cells: list[Cell],
+    results_path,
+) -> tuple[int, int]:
+    """Run direct inference and append rows. Returns (succeeded, failed)."""
+    requests = [
+        build_inline_request(
+            c.prompt,
+            c.run_id,
+            max_output_tokens=c.max_output_tokens,
+        )
+        for c in cells
+    ]
+    raw_rows = generate_direct(client, requests, concurrency=DIRECT_CONCURRENCY)
+    by_run_id = {r.get("run_id"): r for r in raw_rows if r.get("run_id")}
+
+    rows_to_append: list[dict] = []
+    succeeded = 0
+    failed = 0
+    for cell in cells:
+        raw = by_run_id.get(cell.run_id)
+        if raw is None:
+            failed += 1
+            rows_to_append.append(
+                _row_from_response(
+                    cell,
+                    {
+                        "text": "",
+                        "tokens_in": 0,
+                        "tokens_out": 0,
+                        "cached_tokens": 0,
+                        "error": "missing_direct_response",
+                    },
+                )
+            )
+            continue
+        row = _row_from_response(cell, raw)
+        rows_to_append.append(row)
+        if row["schema_valid"]:
+            succeeded += 1
+        else:
+            failed += 1
+    state.append_results(results_path, rows_to_append)
+    return succeeded, failed
+
+
 # --- phase orchestration ---------------------------------------------------
 
 
-def run_phase1(s: state.ExperimentState) -> state.ExperimentState:
+def run_phase1(
+    s: state.ExperimentState, *, retry_invalid: bool = False
+) -> state.ExperimentState:
     """Run Phase 1: submit ALL 8 scenarios up-front, then poll + fetch each.
 
     The two passes are the key win — submitting all batches first lets them
@@ -298,56 +454,84 @@ def run_phase1(s: state.ExperimentState) -> state.ExperimentState:
     problems_by_id = {p["problem_id"]: p for p in problems}
 
     client = get_client()
-    completed = state.load_completed_run_ids(PHASE1_RESULTS)
+    completed = state.load_completed_run_ids(
+        PHASE1_RESULTS, require_schema_valid=retry_invalid
+    )
     logger.info("Phase 1 — %d run_ids already in %s", len(completed), PHASE1_RESULTS.name)
 
-    # Pass 1 — submit (or recover) every batch up-front so they all run
-    # concurrently on the provider side.
-    pending_ingest: dict[str, list[Cell]] = {}
-    for scenario in SCENARIOS:
-        entry = s.phase1.batches.get(scenario.id) or state.BatchEntry()
-        if entry.status in {"JOB_STATE_FAILED", "JOB_STATE_CANCELLED", "FAILED"}:
-            logger.error(
-                "Phase 1 — scenario %s in terminal failure (%s): %s. "
-                "Inspect state.json and clear that scenario's entry "
-                "(or `python -m experiments.runner reset --yes`) to retry.",
-                scenario.id,
-                entry.status,
-                entry.error,
+    if USE_BATCH:
+        # Pass 1 — submit (or recover) every batch up-front so they all run
+        # concurrently on the provider side.
+        pending_ingest: dict[str, list[Cell]] = {}
+        for scenario in SCENARIOS:
+            entry = s.phase1.batches.get(scenario.id) or state.BatchEntry()
+            if entry.status in {"JOB_STATE_FAILED", "JOB_STATE_CANCELLED", "FAILED"}:
+                logger.error(
+                    "Phase 1 — scenario %s in terminal failure (%s): %s. "
+                    "Inspect state.json and clear that scenario's entry "
+                    "(or `python -m experiments.runner reset --yes`) to retry.",
+                    scenario.id,
+                    entry.status,
+                    entry.error,
+                )
+                continue
+            cells = _phase1_cells_for_scenario(
+                scenario, problems_by_id, submissions, few_shot_pool
             )
-            continue
-        cells = _phase1_cells_for_scenario(
-            scenario, problems_by_id, submissions, few_shot_pool
-        )
-        cells_in_batch, entry = _ensure_batch_submitted(
-            client,
-            entry,
-            cells,
-            completed,
-            display_name=f"phase1-{scenario.id}",
-        )
-        s.phase1.batches[scenario.id] = entry
-        state.save_state(s)
-        if cells_in_batch and entry.batch_name and entry.status != "SUCCEEDED":
-            pending_ingest[scenario.id] = cells_in_batch
+            cells_in_batch, entry = _ensure_batch_submitted(
+                client,
+                entry,
+                cells,
+                completed,
+                display_name=f"phase1-{scenario.id}",
+            )
+            s.phase1.batches[scenario.id] = entry
+            state.save_state(s)
+            if cells_in_batch and entry.batch_name and entry.status != "SUCCEEDED":
+                pending_ingest[scenario.id] = cells_in_batch
 
-    logger.info(
-        "Phase 1 — submitted/recovered %d batch(es); now polling in parallel",
-        len(pending_ingest),
-    )
-
-    # Pass 2 — poll + fetch each batch. Polls are sequential in code, but the
-    # batches are all running concurrently server-side; once the slowest is
-    # done, the others are too, so the second/third/... poll usually returns
-    # SUCCEEDED on the first GET.
-    for scenario_id, cells_in_batch in pending_ingest.items():
-        entry = s.phase1.batches[scenario_id]
-        ok, bad = _ingest_batch(client, entry, cells_in_batch, PHASE1_RESULTS)
         logger.info(
-            "Phase 1 — scenario %s: %d ok, %d failed", scenario_id, ok, bad
+            "Phase 1 — submitted/recovered %d batch(es); now polling in parallel",
+            len(pending_ingest),
         )
-        s.phase1.batches[scenario_id] = entry
-        state.save_state(s)
+
+        # Pass 2 — poll + fetch each batch. Polls are sequential in code, but the
+        # batches are all running concurrently server-side; once the slowest is
+        # done, the others are too, so the second/third/... poll usually returns
+        # SUCCEEDED on the first GET.
+        for scenario_id, cells_in_batch in pending_ingest.items():
+            entry = s.phase1.batches[scenario_id]
+            ok, bad = _ingest_batch(client, entry, cells_in_batch, PHASE1_RESULTS)
+            logger.info(
+                "Phase 1 — scenario %s: %d ok, %d failed", scenario_id, ok, bad
+            )
+            s.phase1.batches[scenario_id] = entry
+            state.save_state(s)
+    else:
+        logger.info(
+            "Phase 1 — direct inference (no batch), concurrency=%d",
+            DIRECT_CONCURRENCY,
+        )
+        for scenario in SCENARIOS:
+            entry = s.phase1.batches.get(scenario.id) or state.BatchEntry()
+            cells = _phase1_cells_for_scenario(
+                scenario, problems_by_id, submissions, few_shot_pool
+            )
+            pending = [c for c in cells if c.run_id not in completed]
+            if not pending:
+                if entry.status != "SUCCEEDED":
+                    entry.status = "SUCCEEDED"
+                s.phase1.batches[scenario.id] = entry
+                state.save_state(s)
+                continue
+            ok, bad = _ingest_direct(client, pending, PHASE1_RESULTS)
+            logger.info(
+                "Phase 1 — scenario %s: %d ok, %d failed", scenario.id, ok, bad
+            )
+            entry.status = "SUCCEEDED"
+            entry.request_count = len(pending)
+            s.phase1.batches[scenario.id] = entry
+            state.save_state(s)
 
     if not all(e.status == "SUCCEEDED" for e in s.phase1.batches.values()):
         logger.warning("Phase 1 incomplete — some batches not in SUCCEEDED state")
@@ -380,7 +564,9 @@ def run_phase1(s: state.ExperimentState) -> state.ExperimentState:
     return s
 
 
-def run_phase2(s: state.ExperimentState) -> state.ExperimentState:
+def run_phase2(
+    s: state.ExperimentState, *, retry_invalid: bool = False
+) -> state.ExperimentState:
     if not s.phase1.complete:
         raise RuntimeError("Phase 1 must complete before Phase 2.")
     if not s.phase1.best_scenario_id or not s.phase1.worst_case_id:
@@ -393,7 +579,9 @@ def run_phase2(s: state.ExperimentState) -> state.ExperimentState:
     worst_case_id = s.phase1.worst_case_id
 
     client = get_client()
-    completed = state.load_completed_run_ids(PHASE2_RESULTS)
+    completed = state.load_completed_run_ids(
+        PHASE2_RESULTS, require_schema_valid=retry_invalid
+    )
     logger.info("Phase 2 — %d run_ids already in %s", len(completed), PHASE2_RESULTS.name)
 
     cells = _phase2_cells(
@@ -406,25 +594,40 @@ def run_phase2(s: state.ExperimentState) -> state.ExperimentState:
             f"Phase 2 batch in terminal failure ({entry.status}): {entry.error}. "
             f"Clear `phase2.batch` in state.json (or run `reset --yes`) to retry."
         )
-    cells_in_batch, entry = _ensure_batch_submitted(
-        client,
-        entry,
-        cells,
-        completed,
-        display_name=f"phase2-{scenario.id}-{worst_case_id}",
-    )
-    s.phase2.batch = entry
-    state.save_state(s)
 
-    if cells_in_batch and entry.batch_name and entry.status != "SUCCEEDED":
-        ok, bad = _ingest_batch(client, entry, cells_in_batch, PHASE2_RESULTS)
-        logger.info("Phase 2 — %s: %d ok, %d failed", scenario.id, ok, bad)
+    if USE_BATCH:
+        cells_in_batch, entry = _ensure_batch_submitted(
+            client,
+            entry,
+            cells,
+            completed,
+            display_name=f"phase2-{scenario.id}-{worst_case_id}",
+        )
         s.phase2.batch = entry
         state.save_state(s)
 
-    if entry.status != "SUCCEEDED":
-        logger.warning("Phase 2 incomplete — batch not SUCCEEDED")
-        return s
+        if cells_in_batch and entry.batch_name and entry.status != "SUCCEEDED":
+            ok, bad = _ingest_batch(client, entry, cells_in_batch, PHASE2_RESULTS)
+            logger.info("Phase 2 — %s: %d ok, %d failed", scenario.id, ok, bad)
+            s.phase2.batch = entry
+            state.save_state(s)
+
+        if entry.status != "SUCCEEDED":
+            logger.warning("Phase 2 incomplete — batch not SUCCEEDED")
+            return s
+    else:
+        logger.info(
+            "Phase 2 — direct inference (no batch), concurrency=%d",
+            DIRECT_CONCURRENCY,
+        )
+        pending = [c for c in cells if c.run_id not in completed]
+        if pending:
+            ok, bad = _ingest_direct(client, pending, PHASE2_RESULTS)
+            logger.info("Phase 2 — %s: %d ok, %d failed", scenario.id, ok, bad)
+        entry.status = "SUCCEEDED"
+        entry.request_count = len(pending)
+        s.phase2.batch = entry
+        state.save_state(s)
 
     # Compute ICC.
     rows = state.load_results(PHASE2_RESULTS)
@@ -476,25 +679,84 @@ def cmd_status(_args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_phase1(_args: argparse.Namespace) -> int:
+def cmd_phase1(args: argparse.Namespace) -> int:
     s = state.load_state()
-    run_phase1(s)
+    run_phase1(s, retry_invalid=args.retry_invalid)
     return 0
 
 
-def cmd_phase2(_args: argparse.Namespace) -> int:
+def cmd_phase2(args: argparse.Namespace) -> int:
     s = state.load_state()
-    run_phase2(s)
+    run_phase2(s, retry_invalid=args.retry_invalid)
     return 0
 
 
-def cmd_all(_args: argparse.Namespace) -> int:
+def cmd_all(args: argparse.Namespace) -> int:
     s = state.load_state()
-    s = run_phase1(s)
+    s = run_phase1(s, retry_invalid=args.retry_invalid)
     if not s.phase1.complete:
         logger.error("Phase 1 didn't complete — cannot start Phase 2.")
         return 1
-    run_phase2(s)
+    s = run_phase2(s, retry_invalid=args.retry_invalid)
+    if s.phase2.complete and s.phase1.metrics and s.phase1.best_scenario_id:
+        rows_p2 = state.load_results(PHASE2_RESULTS)
+        matrix, _ = analysis.build_icc_matrix(rows_p2)
+        k = len(matrix[0]) if matrix else 0
+        print(
+            analysis.format_final_summary(
+                scenario_metrics=s.phase1.metrics,
+                best_scenario_id=s.phase1.best_scenario_id,
+                worst_case_id=s.phase1.worst_case_id or "?",
+                phase2_icc=s.phase2.icc or float("nan"),
+                phase2_icc_ci=s.phase2.icc_ci or (float("nan"), float("nan")),
+                phase2_n=len(matrix),
+                phase2_k=k,
+                scenarios_by_id=SCENARIOS_BY_ID,
+            )
+        )
+    return 0
+
+
+def cmd_reprocess(args: argparse.Namespace) -> int:
+    targets: list[Path] = []
+    if args.phase in {"phase1", "all"}:
+        targets.append(PHASE1_RESULTS)
+    if args.phase in {"phase2", "all"}:
+        targets.append(PHASE2_RESULTS)
+
+    updated_total = 0
+    for path in targets:
+        out_path, updated = _annotate_results_file(path, in_place=args.in_place)
+        updated_total += updated
+        print(f"annotated {updated} row(s) -> {out_path}")
+    if not targets:
+        print("No phases selected for reprocess.")
+    else:
+        print(f"updated {updated_total} row(s) total")
+    return 0
+
+
+def cmd_summary(_args: argparse.Namespace) -> int:
+    """Print the final summary from completed state without re-running anything."""
+    s = state.load_state()
+    if not s.phase1.complete or not s.phase2.complete:
+        print("Experiment not yet complete — run `all` or `phase1` + `phase2` first.")
+        return 1
+    rows_p2 = state.load_results(PHASE2_RESULTS)
+    matrix, _ = analysis.build_icc_matrix(rows_p2)
+    k = len(matrix[0]) if matrix else 0
+    print(
+        analysis.format_final_summary(
+            scenario_metrics=s.phase1.metrics or {},
+            best_scenario_id=s.phase1.best_scenario_id or "?",
+            worst_case_id=s.phase1.worst_case_id or "?",
+            phase2_icc=s.phase2.icc or float("nan"),
+            phase2_icc_ci=s.phase2.icc_ci or (float("nan"), float("nan")),
+            phase2_n=len(matrix),
+            phase2_k=k,
+            scenarios_by_id=SCENARIOS_BY_ID,
+        )
+    )
     return 0
 
 
@@ -521,18 +783,56 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="Print current state and exit.").set_defaults(
         func=cmd_status
     )
-    sub.add_parser(
+    phase1 = sub.add_parser(
         "phase1",
         help="Run / resume Phase 1 (accuracy). Idempotent — safe to re-run.",
-    ).set_defaults(func=cmd_phase1)
-    sub.add_parser(
+    )
+    phase1.add_argument(
+        "--retry-invalid",
+        action="store_true",
+        help="Re-run only schema-invalid rows instead of skipping them.",
+    )
+    phase1.set_defaults(func=cmd_phase1)
+    phase2 = sub.add_parser(
         "phase2",
         help="Run / resume Phase 2 (consistency). Requires Phase 1 complete.",
-    ).set_defaults(func=cmd_phase2)
-    sub.add_parser(
+    )
+    phase2.add_argument(
+        "--retry-invalid",
+        action="store_true",
+        help="Re-run only schema-invalid rows instead of skipping them.",
+    )
+    phase2.set_defaults(func=cmd_phase2)
+    all_cmd = sub.add_parser(
         "all",
         help="Run / resume Phase 1, then Phase 2 in one go.",
-    ).set_defaults(func=cmd_all)
+    )
+    all_cmd.add_argument(
+        "--retry-invalid",
+        action="store_true",
+        help="Re-run only schema-invalid rows instead of skipping them.",
+    )
+    all_cmd.set_defaults(func=cmd_all)
+    sub.add_parser(
+        "summary",
+        help="Print the final experiment summary (requires both phases complete).",
+    ).set_defaults(func=cmd_summary)
+    reprocess = sub.add_parser(
+        "reprocess",
+        help="Annotate schema errors in existing JSONL results.",
+    )
+    reprocess.add_argument(
+        "--phase",
+        choices=["phase1", "phase2", "all"],
+        default="all",
+        help="Which phase results to annotate.",
+    )
+    reprocess.add_argument(
+        "--in-place",
+        action="store_true",
+        help="Overwrite the original JSONL files instead of writing *.annotated.jsonl.",
+    )
+    reprocess.set_defaults(func=cmd_reprocess)
     reset = sub.add_parser(
         "reset",
         help="Delete state.json and results JSONLs. Requires --yes.",
