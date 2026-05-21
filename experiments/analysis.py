@@ -252,7 +252,7 @@ def compute_icc(matrix: list[list[float]]) -> tuple[float, tuple[float, float]]:
             exc.__class__.__name__,
         )
 
-    if n < 3 or k < 2 or point >= 1.0 or point <= -1.0:
+    if n <= 3 or k < 2 or point >= 1.0 or point <= -1.0:
         return point, (point, point)
     z = 0.5 * math.log((1 + point) / (1 - point))
     se = 1 / math.sqrt(n - 3)
@@ -320,6 +320,79 @@ def format_phase1_anova(anova: dict | None) -> str:
             f"{r['source']:<32} {r['sum_sq']:>10.3f}  "
             f"{r['df']:>6.0f}  {f_str}  {p_str}"
         )
+    lines.append("=" * width)
+    return "\n".join(lines)
+
+
+def format_final_summary(
+    scenario_metrics: dict[str, dict[str, float]],
+    best_scenario_id: str,
+    worst_case_id: str,
+    phase2_icc: float,
+    phase2_icc_ci: tuple[float, float],
+    phase2_n: int,
+    phase2_k: int,
+    scenarios_by_id: dict,
+) -> str:
+    """One-page summary printed after both phases complete."""
+    width = 70
+    lines: list[str] = []
+    lines.append("=" * width)
+    lines.append("EXPERIMENT SUMMARY")
+    lines.append("=" * width)
+
+    # --- best scenario block ---
+    sc = scenarios_by_id.get(best_scenario_id)
+    m = scenario_metrics.get(best_scenario_id, {})
+
+    def _yn(v: bool) -> str:
+        return "yes" if v else "no"
+
+    lines.append("")
+    lines.append(f"  Best scenario   : {best_scenario_id}  ({sc.label if sc else '?'})")
+    if sc:
+        lines.append(f"  Structured rubric : {_yn(sc.structured_rubric)}")
+        lines.append(f"  Chain-of-thought  : {_yn(sc.cot)}")
+        lines.append(f"  Few-shot examples : {_yn(sc.few_shot)}")
+    lines.append("")
+    lines.append("  Phase 1 — accuracy (human vs LLM, n={})".format(int(m.get("n", 0))))
+    lines.append(f"    MAE              : {m.get('mae', float('nan')):.2f} pts  "
+                 f"({m.get('mae_normalized', float('nan')):.4f} normalised)")
+    lines.append(f"    Pearson r        : {m.get('pearson', float('nan')):.3f}")
+    lines.append(f"    ICC(A,1)         : {m.get('icc', float('nan')):.3f}  "
+                 f"[{m.get('icc_ci_lo', float('nan')):.3f}, {m.get('icc_ci_hi', float('nan')):.3f}]")
+
+    # --- phase 2 consistency ---
+    p2_label = (
+        "excellent" if phase2_icc >= 0.9
+        else "good" if phase2_icc >= 0.75
+        else "moderate" if phase2_icc >= 0.5
+        else "poor"
+    )
+    lines.append("")
+    lines.append(f"  Phase 2 — consistency ({phase2_n} submissions × {phase2_k} reps)")
+    lines.append(f"    ICC(A,1)         : {phase2_icc:.3f}  "
+                 f"(95% CI {phase2_icc_ci[0]:.3f} … {phase2_icc_ci[1]:.3f})")
+    lines.append(f"    Interpretation   : {p2_label}  (Koo & Li 2016)")
+
+    # --- ranking of all scenarios ---
+    lines.append("")
+    lines.append("  All scenarios ranked by MAE:")
+    ranked = sorted(scenario_metrics.items(), key=lambda kv: (kv[1]["mae"], -kv[1]["pearson"]))
+    for rank, (sid, sm) in enumerate(ranked, 1):
+        sc_r = scenarios_by_id.get(sid)
+        label_str = f"  ({sc_r.label})" if sc_r else ""
+        marker = "  <-- winner" if sid == best_scenario_id else ""
+        lines.append(
+            f"    {rank}. {sid}{label_str:<22}  MAE {sm['mae']:.2f}  "
+            f"r {sm['pearson']:.3f}  ICC {sm['icc']:.3f}{marker}"
+        )
+
+    # --- worst case ---
+    lines.append("")
+    lines.append(f"  Worst case for Phase 2 : {worst_case_id}")
+
+    lines.append("")
     lines.append("=" * width)
     return "\n".join(lines)
 
