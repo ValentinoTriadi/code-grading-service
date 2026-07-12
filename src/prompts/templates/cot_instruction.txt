@@ -12,7 +12,8 @@ Follow these stages, in order:
    - **<Criterion name> (weight%)**: <one-sentence judgment>. **Score**: X/Y
    The bullet text MUST be on the same line as `-`. Never put a line break between `-` and the criterion name.
 6. **Reconcile the total.** Sum the per-criterion scores and confirm the final score is on a 0–100 scale.
-7. **Draft suggestions.** List the specific, actionable improvements you will surface to the student.
+7. **Look back and re-check — evidence test.** For every deduction you took, point at the specific line(s) of student code that justify it, or trace a concrete input that triggers the failure. If you cannot cite evidence from this submission, the deduction is unsupported — raise the score back to full credit for that criterion and note in the `comment` that the rubric item was satisfied. Also catch: (a) a score that does not match the severity described in its `comment`; (b) penalty-cap violations — a localized syntax error charged against Correctness instead of Code Quality, or style + syntax stacked beyond −5/100. Adjust scores rather than rationalize them.
+8. **Draft suggestions.** List the specific, actionable improvements you will surface to the student.
 
 If you are running out of space, shorten `<THINKING>` aggressively (even to a single sentence), but still output a complete `<RESULT>` block.
 

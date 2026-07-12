@@ -4,12 +4,9 @@ from pathlib import Path
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 DEFAULT_RUBRIC = (
-    "1. Correctness (50%): Does the code produce correct output and satisfy "
-    "every requirement stated in the problem?\n"
-    "2. Readability (25%): Is the code easy to read? "
-    "(naming, structure, indentation, comments where they help)\n"
-    "3. Efficiency (25%): Does the code use a reasonable approach without "
-    "unnecessary work or redundancy for the input sizes implied by the problem?"
+    "1. Correctness (60%): Functionality, edge cases, syntax, and logic implementation.\n"
+    "2. Efficiency (25%): Time/space complexity and optimal algorithms usage.\n"
+    "3. Code Quality (15%): Readability, documentation, and code structure."
 )
 
 

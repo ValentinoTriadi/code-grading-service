@@ -71,7 +71,7 @@ _OUTPUT_RULES_HEADER = (
     "- Output exactly one `<RESULT>` block.\n"
     "- The JSON must parse with a standard JSON parser. No trailing commas, "
     "no comments, no `undefined`.\n"
-    "- All string values must be valid JSON strings — escape `\"`, `\\`, and "
+    '- All string values must be valid JSON strings — escape `"`, `\\`, and '
     "newlines properly.\n"
     "- `score` is the overall score on a 0–100 scale and MUST equal the sum of "
     "the per-criterion `score` values when the rubric weights are normalized to 100.\n"
@@ -80,7 +80,7 @@ _OUTPUT_RULES_HEADER = (
     "- `summary`, `comment`, `suggestions`, and `exemplary_points` entries are all Markdown.\n"
     "- `exemplary_points` is an array of short bullets — empty array if nothing stands out.\n"
     "- `complexity` is an object with `time` and `space` fields, each a Big-O string "
-    "or `\"unknown\"`. Estimate from the code as written, not from the canonical solution.\n"
+    'or `"unknown"`. Estimate from the code as written, not from the canonical solution.\n'
     "- `confidence` is a float in [0.0, 1.0] reflecting how sure you are of the score. "
     "Lower it when the code is ambiguous, partial, or relies on assumptions you had to make.\n"
     "- If you are running out of space, shorten `<THINKING>` first; never omit or truncate `<RESULT>`.\n"
@@ -97,16 +97,14 @@ _OUTPUT_FORMAT_WITH_REASON = (
     "Response shape (in this exact order):\n\n"
     "<THINKING>\n"
     "[Your step-by-step reasoning, following the chain-of-thought instructions above.]\n"
-    "</THINKING>\n\n"
-    + _RESULT_SCHEMA
+    "</THINKING>\n\n" + _RESULT_SCHEMA
 )
 
 _OUTPUT_FORMAT_WITHOUT_REASON = (
     _OUTPUT_RULES_HEADER
     + "- Do NOT include any `<THINKING>` block — go straight to `<RESULT>`.\n"
     "- Output MUST start with `<RESULT>` on the first line.\n\n"
-    "Response shape:\n\n"
-    + _RESULT_SCHEMA
+    "Response shape:\n\n" + _RESULT_SCHEMA
 )
 
 

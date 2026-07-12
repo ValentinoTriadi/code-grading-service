@@ -1,6 +1,14 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class FewShotExample(BaseModel):
+    """A single few-shot grading example shown to the model as guidance."""
+
+    problem: str = Field(description="Problem statement for the example.")
+    code: str = Field(description="Student code for the example.")
+    grading: str = Field(description="Expected grading output for the example.")
+
+
 class InlineGradingRequest(BaseModel):
     """Request body for the inline grading endpoint."""
 
@@ -13,7 +21,7 @@ class InlineGradingRequest(BaseModel):
                     "1. Correctness (70%): The function returns the correct result for every test case.\n"
                     "2. Readability (30%): Variable names are clear and the code is easy to understand."
                 ),
-                "with_reason": False,
+                "with_reason": True,
             }
         }
     )
@@ -24,8 +32,12 @@ class InlineGradingRequest(BaseModel):
         default=None,
         description="Custom grading rubric. Uses a sensible default if omitted.",
     )
+    few_shot_examples: list[FewShotExample] | None = Field(
+        default=None,
+        description="Optional few-shot examples to anchor the grading style.",
+    )
     with_reason: bool = Field(
-        default=False,
+        default=True,
         description="If true, includes the LLM chain-of-thought reasoning in the response.",
     )
 

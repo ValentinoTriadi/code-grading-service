@@ -9,11 +9,19 @@ from collections.abc import AsyncGenerator
 from fastapi import HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
-from src.api.schemas.request import GradingRequest, InlineGradingRequest
+from src.api.schemas.request import FewShotExample, GradingRequest, InlineGradingRequest
 from src.api.schemas.response import GradingResponse
 from src.services.grading_service import GradingService
 
 logger = logging.getLogger(__name__)
+
+
+def _serialize_examples(
+    examples: list[FewShotExample] | None,
+) -> list[dict] | None:
+    if not examples:
+        return None
+    return [ex.model_dump() for ex in examples]
 
 
 class GradingController:
@@ -34,6 +42,7 @@ class GradingController:
             student_code=request.code,
             rubric=request.rubric,
             with_reason=request.with_reason,
+            few_shot_examples=_serialize_examples(request.few_shot_examples),
         )
         result = await self.service.grade(internal)
         if not request.with_reason:
@@ -46,6 +55,7 @@ class GradingController:
         code: UploadFile,
         rubric: str | None,
         with_reason: bool,
+        few_shot_examples: list[dict] | None = None,
     ) -> GradingResponse:
         logger.info(
             "grade_file — filename=%s, with_reason=%s", code.filename, with_reason
@@ -62,6 +72,7 @@ class GradingController:
             student_code=content,
             rubric=rubric,
             with_reason=with_reason,
+            few_shot_examples=few_shot_examples,
         )
         result = await self.service.grade(internal)
         if not with_reason:
@@ -79,6 +90,7 @@ class GradingController:
             student_code=request.code,
             rubric=request.rubric,
             with_reason=request.with_reason,
+            few_shot_examples=_serialize_examples(request.few_shot_examples),
         )
 
         queue: asyncio.Queue[dict | None] = asyncio.Queue()
@@ -133,6 +145,7 @@ class GradingController:
         code: UploadFile,
         rubric: str | None,
         with_reason: bool,
+        few_shot_examples: list[dict] | None = None,
     ) -> AsyncGenerator[dict, None]:
         """SSE generator for file grading — same event shape as grade_inline_stream."""
         logger.info(
@@ -158,6 +171,7 @@ class GradingController:
             student_code=content,
             rubric=rubric,
             with_reason=with_reason,
+            few_shot_examples=few_shot_examples,
         )
 
         queue: asyncio.Queue[dict | None] = asyncio.Queue()
@@ -210,6 +224,7 @@ class GradingController:
         files: UploadFile,
         rubric: str | None,
         with_reason: bool,
+        few_shot_examples: list[dict] | None = None,
     ) -> StreamingResponse:
         logger.info(
             "grade_batch — zipfile=%s, with_reason=%s", files.filename, with_reason
@@ -256,6 +271,7 @@ class GradingController:
                     rubric=rubric,
                     with_reason=with_reason,
                     semaphore=semaphore,
+                    few_shot_examples=few_shot_examples,
                 )
             )
             for idx, filename, content in pending
@@ -283,6 +299,7 @@ class GradingController:
         files: UploadFile,
         rubric: str | None,
         with_reason: bool,
+        few_shot_examples: list[dict] | None = None,
     ) -> AsyncGenerator[dict, None]:
         """SSE event generator: emits progress per file, then a final 'complete' event
         containing the Excel as base64 so the client can trigger the download."""
@@ -333,6 +350,7 @@ class GradingController:
                 rubric=rubric,
                 with_reason=with_reason,
                 semaphore=semaphore,
+                few_shot_examples=few_shot_examples,
             )
             results[idx] = entry
             await queue.put((idx, entry))
@@ -387,12 +405,14 @@ class GradingController:
         rubric: str | None,
         with_reason: bool,
         semaphore: asyncio.Semaphore,
+        few_shot_examples: list[dict] | None = None,
     ) -> tuple[int, dict]:
         internal = GradingRequest(
             problem_description=problems,
             student_code=content,
             rubric=rubric,
             with_reason=with_reason,
+            few_shot_examples=few_shot_examples,
         )
 
         async with semaphore:

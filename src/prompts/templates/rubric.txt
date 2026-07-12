@@ -1,5 +1,7 @@
 Below is the rubric you MUST use for this submission.
 
+When the rubric uses scoring bands, map the submission to **one band per criterion** based on the evidence the code actually shows. Pick the band whose description best fits the code — do not treat each band's bullet points as a checklist of things to find. If the submission sits between two bands, cite the evidence and pick the closer one.
+
 {{rubric}}
 
 This rubric is the only basis for the score and the per-criterion breakdown. Do not add criteria that are not listed, and do not skip criteria that are listed. The number and names of entries in the `criteria` array of your output MUST exactly match the rubric above.

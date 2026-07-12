@@ -1,17 +1,45 @@
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 from sse_starlette.sse import EventSourceResponse
 
 from src.api.controllers.grading import GradingController
 from src.api.dependencies import get_grading_controller
-from src.api.schemas.request import InlineGradingRequest
+from src.api.schemas.request import FewShotExample, InlineGradingRequest
 from src.api.schemas.response import GradingResponse
 
 router = APIRouter(prefix="/api/v1", tags=["grading"])
 
 ControllerDep = Annotated[GradingController, Depends(get_grading_controller)]
+
+
+def _parse_examples_form(raw: str | None) -> list[dict] | None:
+    """Decode a JSON-encoded few-shot examples form field.
+
+    Returns None for empty input; raises HTTPException(400) on bad JSON or
+    on entries that don't match the FewShotExample schema.
+    """
+    if not raw or not raw.strip():
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"few_shot_examples must be valid JSON: {exc.msg}",
+        )
+    if not isinstance(data, list):
+        raise HTTPException(
+            status_code=400, detail="few_shot_examples must be a JSON array"
+        )
+    try:
+        parsed = [FewShotExample.model_validate(item) for item in data]
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.errors())
+    return [ex.model_dump() for ex in parsed]
 
 _COMMON_ERRORS = {
     400: {
@@ -55,14 +83,19 @@ async def route_grade_file(
         None, description="Custom rubric. Uses default if omitted."
     ),
     with_reason: bool = Form(
-        False, description="Include LLM reasoning in the response."
+        True, description="Include LLM reasoning in the response."
+    ),
+    few_shot_examples: str | None = Form(
+        None,
+        description="Optional JSON array of few-shot examples (problem/code/grading).",
     ),
 ) -> GradingResponse:
     """Grade student code submitted as a **file upload** (`multipart/form-data`).
 
     Accepts any plain-text source file (`.py`, `.java`, `.cpp`, etc.).
     """
-    return await controller.grade_file(problems, code, rubric, with_reason)
+    examples = _parse_examples_form(few_shot_examples)
+    return await controller.grade_file(problems, code, rubric, with_reason, examples)
 
 
 @router.post(
@@ -92,7 +125,11 @@ async def route_grade_batch(
         None, description="Custom rubric. Uses default if omitted."
     ),
     with_reason: bool = Form(
-        False, description="Add a Reasoning column to the Excel output."
+        True, description="Add a Reasoning column to the Excel output."
+    ),
+    few_shot_examples: str | None = Form(
+        None,
+        description="Optional JSON array of few-shot examples (problem/code/grading).",
     ),
 ) -> StreamingResponse:
     """Grade multiple submissions from a **zip archive** (`multipart/form-data`).
@@ -101,7 +138,10 @@ async def route_grade_batch(
     Returns an **Excel file** (`grading_results.xlsx`) with columns:
     `No`, `Filename`, `Score`, `Feedback`, `Reasoning` *(if requested)*, `Error`.
     """
-    return await controller.grade_batch(problems, files, rubric, with_reason)
+    examples = _parse_examples_form(few_shot_examples)
+    return await controller.grade_batch(
+        problems, files, rubric, with_reason, examples
+    )
 
 
 @router.post(
@@ -147,11 +187,13 @@ async def route_grade_file_stream(
     problems: str = Form(...),
     code: UploadFile = File(...),
     rubric: str | None = Form(None),
-    with_reason: bool = Form(False),
+    with_reason: bool = Form(True),
+    few_shot_examples: str | None = Form(None),
 ) -> EventSourceResponse:
     """Grade a file upload and stream pipeline progress via **Server-Sent Events**."""
+    examples = _parse_examples_form(few_shot_examples)
     return EventSourceResponse(
-        controller.grade_file_stream(problems, code, rubric, with_reason)
+        controller.grade_file_stream(problems, code, rubric, with_reason, examples)
     )
 
 
@@ -183,7 +225,11 @@ async def route_grade_batch_stream(
         None, description="Custom rubric. Uses default if omitted."
     ),
     with_reason: bool = Form(
-        False, description="Add a Reasoning column to the Excel output."
+        True, description="Add a Reasoning column to the Excel output."
+    ),
+    few_shot_examples: str | None = Form(
+        None,
+        description="Optional JSON array of few-shot examples (problem/code/grading).",
     ),
 ) -> EventSourceResponse:
     """Stream grading progress for a batch zip upload via **Server-Sent Events**.
@@ -191,6 +237,9 @@ async def route_grade_batch_stream(
     Emits one `progress` event per file as it finishes, then a final `complete`
     event containing the Excel result as a base64-encoded string.
     """
+    examples = _parse_examples_form(few_shot_examples)
     return EventSourceResponse(
-        controller.grade_batch_stream(problems, files, rubric, with_reason)
+        controller.grade_batch_stream(
+            problems, files, rubric, with_reason, examples
+        )
     )
