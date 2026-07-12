@@ -46,6 +46,7 @@ from experiments.config import (
     FEW_SHOT_COUNT,
     GEMINI_MAX_OUTPUT_TOKENS,
     GEMINI_MAX_OUTPUT_TOKENS_COT,
+    GEMINI_TEMPERATURE,
     PHASE1_RESULTS,
     PHASE2_RESULTS,
     RESULTS_DIR,
@@ -115,13 +116,13 @@ def _phase1_cells_for_scenario(
 ) -> list[Cell]:
     cells: list[Cell] = []
     max_tokens = (
-        GEMINI_MAX_OUTPUT_TOKENS_COT
-        if scenario.cot
-        else GEMINI_MAX_OUTPUT_TOKENS
+        GEMINI_MAX_OUTPUT_TOKENS_COT if scenario.cot else GEMINI_MAX_OUTPUT_TOKENS
     )
     for sub in submissions:
         problem = problems_by_id[sub["problem_id"]]
-        prompt = build_full_prompt(scenario, problem, sub, few_shot_pool, FEW_SHOT_COUNT)
+        prompt = build_full_prompt(
+            scenario, problem, sub, few_shot_pool, FEW_SHOT_COUNT
+        )
         for r in range(PHASE1_REPLICATES):
             cells.append(
                 Cell(
@@ -147,15 +148,15 @@ def _phase2_cells(
 ) -> list[Cell]:
     cells: list[Cell] = []
     max_tokens = (
-        GEMINI_MAX_OUTPUT_TOKENS_COT
-        if scenario.cot
-        else GEMINI_MAX_OUTPUT_TOKENS
+        GEMINI_MAX_OUTPUT_TOKENS_COT if scenario.cot else GEMINI_MAX_OUTPUT_TOKENS
     )
     for sub in submissions:
         if sub["problem_id"] != worst_case_id:
             continue
         problem = problems_by_id[sub["problem_id"]]
-        prompt = build_full_prompt(scenario, problem, sub, few_shot_pool, FEW_SHOT_COUNT)
+        prompt = build_full_prompt(
+            scenario, problem, sub, few_shot_pool, FEW_SHOT_COUNT
+        )
         for r in range(PHASE2_REPLICATES):
             cells.append(
                 Cell(
@@ -246,21 +247,31 @@ def _annotate_results_file(path: Path, *, in_place: bool) -> tuple[Path, int]:
     return out_path, updated
 
 
+def _recorded_temperatures(rows: list[dict]) -> list[float]:
+    """Distinct sampling temperatures present in result rows, for provenance.
+
+    Reads the value the run actually used rather than the current env, so
+    regenerating a summary from old data reflects that data's temperature.
+    Empty for rows that predate temperature logging.
+    """
+    return sorted({r["temperature"] for r in rows if r.get("temperature") is not None})
+
+
 def _row_from_response(cell: Cell, batch_row: dict) -> dict:
     """Parse one batch response into a result row matching the JSONL schema."""
     text = batch_row.get("text") or ""
     err = batch_row.get("error")
     parsed = None
     schema_valid = False
-    score = 0.0
+    score: float | None = None
     criterion_scores: list[dict] = []
     tokens_out = batch_row.get("tokens_out", 0)
     if text and not err:
         try:
             parsed = PARSER.parse(text)
             schema_valid = parsed.feedback_detail is not None
-            score = parsed.score
-            if parsed.feedback_detail:
+            if schema_valid:
+                score = parsed.score
                 criterion_scores = [
                     {
                         "name": c.name,
@@ -287,12 +298,19 @@ def _row_from_response(cell: Cell, batch_row: dict) -> dict:
         "problem_id": cell.problem_id,
         "submission_id": cell.submission_id,
         "replicate": cell.replicate,
+        # Effective sampling temperature for this grading call. Cells never set
+        # a per-request override today, so every call falls back to the
+        # module-level GEMINI_TEMPERATURE (driven by EXPERIMENT_TEMPERATURE).
+        # Recorded per-row for provenance — e.g. distinguishing a temp=0
+        # deterministic run from a stochastic temp>0 consistency run.
+        "temperature": GEMINI_TEMPERATURE,
         "score": score,
         "criterion_scores": criterion_scores,
         "raw_response": text,
         "tokens_in": batch_row.get("tokens_in", 0),
         "tokens_out": tokens_out,
         "cached_tokens": batch_row.get("cached_tokens", 0),
+        "latency_ms": batch_row.get("latency_ms"),  # ms wall-clock; null for batch mode
         "schema_valid": schema_valid,
         "error": err,
     }
@@ -457,7 +475,9 @@ def run_phase1(
     completed = state.load_completed_run_ids(
         PHASE1_RESULTS, require_schema_valid=retry_invalid
     )
-    logger.info("Phase 1 — %d run_ids already in %s", len(completed), PHASE1_RESULTS.name)
+    logger.info(
+        "Phase 1 — %d run_ids already in %s", len(completed), PHASE1_RESULTS.name
+    )
 
     if USE_BATCH:
         # Pass 1 — submit (or recover) every batch up-front so they all run
@@ -502,9 +522,7 @@ def run_phase1(
         for scenario_id, cells_in_batch in pending_ingest.items():
             entry = s.phase1.batches[scenario_id]
             ok, bad = _ingest_batch(client, entry, cells_in_batch, PHASE1_RESULTS)
-            logger.info(
-                "Phase 1 — scenario %s: %d ok, %d failed", scenario_id, ok, bad
-            )
+            logger.info("Phase 1 — scenario %s: %d ok, %d failed", scenario_id, ok, bad)
             s.phase1.batches[scenario_id] = entry
             state.save_state(s)
     else:
@@ -525,9 +543,7 @@ def run_phase1(
                 state.save_state(s)
                 continue
             ok, bad = _ingest_direct(client, pending, PHASE1_RESULTS)
-            logger.info(
-                "Phase 1 — scenario %s: %d ok, %d failed", scenario.id, ok, bad
-            )
+            logger.info("Phase 1 — scenario %s: %d ok, %d failed", scenario.id, ok, bad)
             entry.status = "SUCCEEDED"
             entry.request_count = len(pending)
             s.phase1.batches[scenario.id] = entry
@@ -547,6 +563,7 @@ def run_phase1(
         )
     best_scenario_id = analysis.pick_best_scenario(scenario_metrics)
     worst_case_id, case_avg_mae = analysis.pick_worst_case(rows, submissions_by_id)
+    timing_stats = analysis.compute_timing_stats(rows) or None
 
     s.phase1.complete = True
     s.phase1.best_scenario_id = best_scenario_id
@@ -556,7 +573,8 @@ def run_phase1(
 
     print(
         analysis.format_phase1_table(
-            scenario_metrics, case_avg_mae, best_scenario_id, worst_case_id
+            scenario_metrics, case_avg_mae, best_scenario_id, worst_case_id,
+            timing_stats=timing_stats,
         )
     )
     anova = analysis.compute_phase1_anova(rows, submissions_by_id, SCENARIOS_BY_ID)
@@ -582,7 +600,9 @@ def run_phase2(
     completed = state.load_completed_run_ids(
         PHASE2_RESULTS, require_schema_valid=retry_invalid
     )
-    logger.info("Phase 2 — %d run_ids already in %s", len(completed), PHASE2_RESULTS.name)
+    logger.info(
+        "Phase 2 — %d run_ids already in %s", len(completed), PHASE2_RESULTS.name
+    )
 
     cells = _phase2_cells(
         scenario, worst_case_id, problems_by_id, submissions, few_shot_pool
@@ -631,23 +651,22 @@ def run_phase2(
 
     # Compute ICC.
     rows = state.load_results(PHASE2_RESULTS)
-    matrix, sids = analysis.build_icc_matrix(rows)
+    matrix, _sids = analysis.build_icc_matrix(rows)
     if not matrix:
         raise RuntimeError("Phase 2 produced no schema-valid replicate matrix.")
     icc, ci = analysis.compute_icc(matrix)
     n = len(matrix)
     k = len(matrix[0])
+    p2_timing = analysis.compute_timing_stats(rows) or None
 
     s.phase2.complete = True
     s.phase2.icc = icc
     s.phase2.icc_ci = ci
     state.save_state(s)
 
-    print(
-        analysis.format_phase2_summary(
-            scenario.id, worst_case_id, icc, ci, n, k
-        )
-    )
+    print(analysis.format_phase2_summary(
+        scenario.id, worst_case_id, icc, ci, n, k, timing_stats=p2_timing,
+    ))
     return s
 
 
@@ -673,9 +692,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
         f"  status={e.status}, batch={e.batch_name or '-'}, requests={e.request_count}"
     )
     if s.phase2.icc is not None:
-        print(
-            f"  ICC(A,1)={s.phase2.icc:.3f} CI={s.phase2.icc_ci}"
-        )
+        print(f"  ICC(A,1)={s.phase2.icc:.3f} CI={s.phase2.icc_ci}")
     return 0
 
 
@@ -691,6 +708,13 @@ def cmd_phase2(args: argparse.Namespace) -> int:
     return 0
 
 
+def _emit_summary(text: str, out_path: Path) -> None:
+    print(text)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(text + "\n", encoding="utf-8")
+    print(f"\nSummary written to {out_path}")
+
+
 def cmd_all(args: argparse.Namespace) -> int:
     s = state.load_state()
     s = run_phase1(s, retry_invalid=args.retry_invalid)
@@ -699,21 +723,30 @@ def cmd_all(args: argparse.Namespace) -> int:
         return 1
     s = run_phase2(s, retry_invalid=args.retry_invalid)
     if s.phase2.complete and s.phase1.metrics and s.phase1.best_scenario_id:
+        rows_p1 = state.load_results(PHASE1_RESULTS)
         rows_p2 = state.load_results(PHASE2_RESULTS)
         matrix, _ = analysis.build_icc_matrix(rows_p2)
         k = len(matrix[0]) if matrix else 0
-        print(
-            analysis.format_final_summary(
-                scenario_metrics=s.phase1.metrics,
-                best_scenario_id=s.phase1.best_scenario_id,
-                worst_case_id=s.phase1.worst_case_id or "?",
-                phase2_icc=s.phase2.icc or float("nan"),
-                phase2_icc_ci=s.phase2.icc_ci or (float("nan"), float("nan")),
-                phase2_n=len(matrix),
-                phase2_k=k,
-                scenarios_by_id=SCENARIOS_BY_ID,
-            )
+        _problems, submissions, _few_shot = load_dataset()
+        submissions_by_id = {sub["submission_id"]: sub for sub in submissions}
+        anova = analysis.compute_phase1_anova(
+            rows_p1, submissions_by_id, SCENARIOS_BY_ID
         )
+        text = analysis.format_final_summary(
+            scenario_metrics=s.phase1.metrics,
+            best_scenario_id=s.phase1.best_scenario_id,
+            worst_case_id=s.phase1.worst_case_id or "?",
+            phase2_icc=s.phase2.icc or float("nan"),
+            phase2_icc_ci=s.phase2.icc_ci or (float("nan"), float("nan")),
+            phase2_n=len(matrix),
+            phase2_k=k,
+            scenarios_by_id=SCENARIOS_BY_ID,
+            phase1_timing=analysis.compute_timing_stats(rows_p1) or None,
+            phase2_timing=analysis.compute_timing_stats(rows_p2) or None,
+            anova=anova,
+            temperatures=_recorded_temperatures(rows_p1 + rows_p2),
+        )
+        _emit_summary(text, args.out)
     return 0
 
 
@@ -736,8 +769,8 @@ def cmd_reprocess(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_summary(_args: argparse.Namespace) -> int:
-    """Print the final summary from completed state without re-running anything."""
+def cmd_summary(args: argparse.Namespace) -> int:
+    """Print the final summary from completed state and write it to a file."""
     s = state.load_state()
     if not s.phase1.complete or not s.phase2.complete:
         print("Experiment not yet complete — run `all` or `phase1` + `phase2` first.")
@@ -745,18 +778,25 @@ def cmd_summary(_args: argparse.Namespace) -> int:
     rows_p2 = state.load_results(PHASE2_RESULTS)
     matrix, _ = analysis.build_icc_matrix(rows_p2)
     k = len(matrix[0]) if matrix else 0
-    print(
-        analysis.format_final_summary(
-            scenario_metrics=s.phase1.metrics or {},
-            best_scenario_id=s.phase1.best_scenario_id or "?",
-            worst_case_id=s.phase1.worst_case_id or "?",
-            phase2_icc=s.phase2.icc or float("nan"),
-            phase2_icc_ci=s.phase2.icc_ci or (float("nan"), float("nan")),
-            phase2_n=len(matrix),
-            phase2_k=k,
-            scenarios_by_id=SCENARIOS_BY_ID,
-        )
+    rows_p1 = state.load_results(PHASE1_RESULTS)
+    _problems, submissions, _few_shot = load_dataset()
+    submissions_by_id = {sub["submission_id"]: sub for sub in submissions}
+    anova = analysis.compute_phase1_anova(rows_p1, submissions_by_id, SCENARIOS_BY_ID)
+    text = analysis.format_final_summary(
+        scenario_metrics=s.phase1.metrics or {},
+        best_scenario_id=s.phase1.best_scenario_id or "?",
+        worst_case_id=s.phase1.worst_case_id or "?",
+        phase2_icc=s.phase2.icc or float("nan"),
+        phase2_icc_ci=s.phase2.icc_ci or (float("nan"), float("nan")),
+        phase2_n=len(matrix),
+        phase2_k=k,
+        scenarios_by_id=SCENARIOS_BY_ID,
+        phase1_timing=analysis.compute_timing_stats(rows_p1) or None,
+        phase2_timing=analysis.compute_timing_stats(rows_p2) or None,
+        anova=anova,
+        temperatures=_recorded_temperatures(rows_p1 + rows_p2),
     )
+    _emit_summary(text, args.out)
     return 0
 
 
@@ -812,11 +852,24 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Re-run only schema-invalid rows instead of skipping them.",
     )
+    all_cmd.add_argument(
+        "--out",
+        type=Path,
+        default=RESULTS_DIR / "summary.txt",
+        help="Path to write the final summary (default: experiments/results/summary.txt).",
+    )
     all_cmd.set_defaults(func=cmd_all)
-    sub.add_parser(
+    summary_cmd = sub.add_parser(
         "summary",
         help="Print the final experiment summary (requires both phases complete).",
-    ).set_defaults(func=cmd_summary)
+    )
+    summary_cmd.add_argument(
+        "--out",
+        type=Path,
+        default=RESULTS_DIR / "summary.txt",
+        help="Path to write the final summary (default: experiments/results/summary.txt).",
+    )
+    summary_cmd.set_defaults(func=cmd_summary)
     reprocess = sub.add_parser(
         "reprocess",
         help="Annotate schema errors in existing JSONL results.",

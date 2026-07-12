@@ -1,0 +1,161 @@
+{
+  "phase1": {
+    "batches": {
+      "S1": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      },
+      "S2": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      },
+      "S3": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      },
+      "S4": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      },
+      "S5": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      },
+      "S6": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      },
+      "S7": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      },
+      "S8": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 144,
+        "error": null
+      }
+    },
+    "complete": true,
+    "best_scenario_id": "S8",
+    "worst_case_id": "P6",
+    "metrics": {
+      "S1": {
+        "n": 0,
+        "n_total": 144,
+        "schema_valid_rate": 0.0,
+        "mae": NaN,
+        "mae_normalized": NaN,
+        "pearson": NaN,
+        "icc": NaN,
+        "icc_ci_lo": NaN,
+        "icc_ci_hi": NaN
+      },
+      "S4": {
+        "n": 46,
+        "n_total": 144,
+        "schema_valid_rate": 0.3194444444444444,
+        "mae": 9.891304347826088,
+        "mae_normalized": 0.09891304347826088,
+        "pearson": 0.7204316468571953,
+        "icc": 0.7044155312330326,
+        "icc_ci_lo": 0.5205648410634244,
+        "icc_ci_hi": 0.8258394063535848
+      },
+      "S5": {
+        "n": 142,
+        "n_total": 144,
+        "schema_valid_rate": 0.9861111111111112,
+        "mae": 10.704225352112676,
+        "mae_normalized": 0.10704225352112676,
+        "pearson": 0.6687726170268824,
+        "icc": 0.650713805420197,
+        "icc_ci_lo": 0.5443316956906854,
+        "icc_ci_hi": 0.7364972570970472
+      },
+      "S8": {
+        "n": 142,
+        "n_total": 144,
+        "schema_valid_rate": 0.9861111111111112,
+        "mae": 10.971830985915492,
+        "mae_normalized": 0.10971830985915493,
+        "pearson": 0.7244521133164988,
+        "icc": 0.6874638887798027,
+        "icc_ci_lo": 0.5894912216524099,
+        "icc_ci_hi": 0.7655038166924228
+      },
+      "S6": {
+        "n": 49,
+        "n_total": 144,
+        "schema_valid_rate": 0.3402777777777778,
+        "mae": 10.795918367346939,
+        "mae_normalized": 0.10795918367346939,
+        "pearson": 0.6699374236531199,
+        "icc": 0.6593848797665675,
+        "icc_ci_lo": 0.4642679718255536,
+        "icc_ci_hi": 0.7934625319172454
+      },
+      "S2": {
+        "n": 39,
+        "n_total": 144,
+        "schema_valid_rate": 0.2708333333333333,
+        "mae": 11.987179487179487,
+        "mae_normalized": 0.11987179487179488,
+        "pearson": 0.6673662223675296,
+        "icc": 0.5784722621787945,
+        "icc_ci_lo": 0.3216593972959145,
+        "icc_ci_hi": 0.7560074845947775
+      },
+      "S7": {
+        "n": 141,
+        "n_total": 144,
+        "schema_valid_rate": 0.9791666666666666,
+        "mae": 16.929078014184398,
+        "mae_normalized": 0.16929078014184398,
+        "pearson": 0.6919169461309644,
+        "icc": 0.5482516076176598,
+        "icc_ci_lo": 0.4211028381296498,
+        "icc_ci_hi": 0.654267651679223
+      },
+      "S3": {
+        "n": 138,
+        "n_total": 144,
+        "schema_valid_rate": 0.9583333333333334,
+        "mae": 15.71594202898551,
+        "mae_normalized": 0.15715942028985508,
+        "pearson": 0.6380537267701034,
+        "icc": 0.5449818844754446,
+        "icc_ci_lo": 0.4157353664697373,
+        "icc_ci_hi": 0.6526522078069975
+      }
+    }
+  },
+  "phase2": {
+    "batch": {
+      "batch_name": null,
+      "status": "SUCCEEDED",
+      "request_count": 161,
+      "error": null
+    },
+    "complete": true,
+    "icc": 0.881983164200898,
+    "icc_ci": [
+      0.7136716013465164,
+      0.954011757505443
+    ]
+  }
+}

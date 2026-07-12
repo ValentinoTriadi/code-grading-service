@@ -155,21 +155,21 @@
     "language": "py",
     "source_file": "tests/test-case/sum-array/sum_array_c1.py",
     "code": "def sum(arr):\n    sum = arr.sum()\n    return sum",
-    "human_score": 95,
+    "human_score": 25,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 60.0,
+        "score": 10.0,
         "max_score": 60
       },
       {
         "name": "Code Quality",
-        "score": 20.0,
+        "score": 10.0,
         "max_score": 25
       },
       {
         "name": "Efficiency",
-        "score": 15.0,
+        "score": 5.0,
         "max_score": 15
       }
     ]
@@ -180,21 +180,21 @@
     "language": "py",
     "source_file": "tests/test-case/sum-array/sum_array_c2.py",
     "code": "def sum(arr):\n    return arr.sum()",
-    "human_score": 98,
+    "human_score": 28,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 60.0,
+        "score": 10.0,
         "max_score": 60
       },
       {
         "name": "Code Quality",
-        "score": 23.0,
+        "score": 13.0,
         "max_score": 25
       },
       {
         "name": "Efficiency",
-        "score": 15.0,
+        "score": 5.0,
         "max_score": 15
       }
     ]
@@ -205,21 +205,21 @@
     "language": "py",
     "source_file": "tests/test-case/sum-array/sum_array_c3.py",
     "code": "def sum_array(arr):\n    return arr.sum()",
-    "human_score": 100,
+    "human_score": 30,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 60.0,
+        "score": 10.0,
         "max_score": 60
       },
       {
         "name": "Code Quality",
-        "score": 25.0,
+        "score": 15.0,
         "max_score": 25
       },
       {
         "name": "Efficiency",
-        "score": 15.0,
+        "score": 5.0,
         "max_score": 15
       }
     ]
@@ -230,21 +230,21 @@
     "language": "py",
     "source_file": "tests/test-case/sum-array/sum_array_c4.py",
     "code": "def sum(arr):\n    sum_array = arr.sum()\n    return sum_array",
-    "human_score": 99,
+    "human_score": 29,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 60.0,
+        "score": 10.0,
         "max_score": 60
       },
       {
         "name": "Code Quality",
-        "score": 24.0,
+        "score": 14.0,
         "max_score": 25
       },
       {
         "name": "Efficiency",
-        "score": 15.0,
+        "score": 5.0,
         "max_score": 15
       }
     ]
@@ -781,16 +781,16 @@
     "language": "java",
     "source_file": "tests/test-case/palindrome-check/PalindromeB1.java",
     "code": "public class PalindromeB1 {\n    public boolean isPalindrome(String s) {\n        String cleaned = s.toLowerCase().replaceAll(\"[^a-z0-9]\", \"\");\n        String reversed = \"\";\n        for (int i = cleaned.length() - 1; i >= 0; i--) {\n            reversed = reversed + cleaned.charAt(i);\n        }\n        return cleaned == reversed;\n    }\n}\n",
-    "human_score": 75,
+    "human_score": 55,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 40.0,
+        "score": 25.0,
         "max_score": 60
       },
       {
         "name": "Code Quality",
-        "score": 20.0,
+        "score": 15.0,
         "max_score": 25
       },
       {
@@ -2286,11 +2286,11 @@
     "language": "cpp",
     "source_file": "tests/test-case/dijkstra-shortest-path/dijkstra_e2.cpp",
     "code": "#include <vector>\n#include <climits>\n\nstd::vector<long long> dijkstra(int n,\n                                const std::vector<std::vector<std::pair<int,int>>>& graph,\n                                int source) {\n    std::vector<long long> dist(n, LLONG_MAX);\n    dist[source] = 0;\n\n    for (int iter = 0; iter < n - 1; ++iter) {\n        for (int u = 0; u < n; ++u) {\n            if (dist[u] == LLONG_MAX) continue;\n            for (const auto& [v, w] : graph[u]) {\n                if (dist[u] + w < dist[v]) {\n                    dist[v] = dist[u] + w;\n                }\n            }\n        }\n    }\n    return dist;\n}\n",
-    "human_score": 70,
+    "human_score": 50,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 30.0,
+        "score": 10.0,
         "max_score": 45
       },
       {
@@ -2646,11 +2646,11 @@
     "language": "cpp",
     "source_file": "tests/test-case/dijkstra-shortest-path/dijkstra_i1.cpp",
     "code": "#include <vector>\n#include <deque>\n#include <limits>\n\nstd::vector<long long> dijkstra(int n,\n                                const std::vector<std::vector<std::pair<int,int>>>& graph,\n                                int source) {\n    constexpr long long INF = std::numeric_limits<long long>::max();\n    std::vector<long long> dist(n, INF);\n    std::deque<int> dq;\n\n    dist[source] = 0;\n    dq.push_back(source);\n\n    while (!dq.empty()) {\n        const int u = dq.front();\n        dq.pop_front();\n        for (const auto& [v, w] : graph[u]) {\n            const long long nd = dist[u] + w;\n            if (nd < dist[v]) {\n                dist[v] = nd;\n                if (w == 0) dq.push_front(v);\n                else        dq.push_back(v);\n            }\n        }\n    }\n    return dist;\n}\n",
-    "human_score": 70,
+    "human_score": 50,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 30.0,
+        "score": 10.0,
         "max_score": 45
       },
       {
@@ -2946,16 +2946,16 @@
     "language": "java",
     "source_file": "tests/test-case/binary-search-tree/BstD1.java",
     "code": "import java.util.ArrayList;\nimport java.util.List;\nimport java.util.TreeSet;\n\npublic class BstD1 {\n    private final TreeSet<Integer> set = new TreeSet<>();\n\n    public void insert(int key) {\n        set.add(key);\n    }\n\n    public boolean contains(int key) {\n        return set.contains(key);\n    }\n\n    public boolean delete(int key) {\n        return set.remove(key);\n    }\n\n    public List<Integer> inorder() {\n        return new ArrayList<>(set);\n    }\n\n    public int size() {\n        return set.size();\n    }\n}\n",
-    "human_score": 70,
+    "human_score": 55,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 30.0,
+        "score": 20.0,
         "max_score": 40
       },
       {
         "name": "Data Structures",
-        "score": 10.0,
+        "score": 5.0,
         "max_score": 30
       },
       {
@@ -3936,16 +3936,16 @@
     "language": "go",
     "source_file": "tests/test-case/concurrent-worker-pool/pool_g3.go",
     "code": "package pool\n\nimport \"sync\"\n\nfunc ParallelMap[T, R any](inputs []T, workers int, fn func(T) R) []R {\n\tif workers <= 0 {\n\t\tworkers = 1\n\t}\n\n\ttype job struct {\n\t\tidx int\n\t\tval T\n\t}\n\tjobs := make(chan job, len(inputs))\n\tout := make([]R, len(inputs))\n\n\tvar wg sync.WaitGroup\n\tfor w := 0; w < workers; w++ {\n\t\twg.Add(1)\n\t\tgo func() {\n\t\t\tdefer wg.Done()\n\t\t\tfor {\n\t\t\t\tj, ok := <-jobs\n\t\t\t\tif !ok {\n\t\t\t\t\treturn\n\t\t\t\t}\n\t\t\t\tout[j.idx] = fn(j.val)\n\t\t\t}\n\t\t}()\n\t}\n\n\tfor i, v := range inputs {\n\t\tjobs <- job{i, v}\n\t}\n\twg.Wait()\n\treturn out\n}\n",
-    "human_score": 70,
+    "human_score": 45,
     "human_score_breakdown": [
       {
         "name": "Correctness",
-        "score": 25.0,
+        "score": 15.0,
         "max_score": 35
       },
       {
         "name": "Concurrency Safety",
-        "score": 20.0,
+        "score": 10.0,
         "max_score": 35
       },
       {
@@ -3955,7 +3955,7 @@
       },
       {
         "name": "Code Quality",
-        "score": 10.0,
+        "score": 5.0,
         "max_score": 15
       }
     ]

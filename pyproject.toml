@@ -17,4 +17,14 @@ dependencies = [
     "google-cloud-storage>=2.0",
     "sse-starlette>=3.3.4",
     "pingouin>=0.6.1",
+    "pytest-html>=4.2.0",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+    "-v",
+    "--html=docs/snapshot/test-report.html",
+    "--self-contained-html",
+    "--ignore=tests/test_nonfunctional_live.py",
+    "--ignore=tests/test_b_live.py",
 ]

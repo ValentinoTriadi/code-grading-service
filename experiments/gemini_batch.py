@@ -35,6 +35,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+import requests.exceptions as req_exceptions
+import ssl
 from google import genai
 from google.api_core import exceptions as gax_exceptions
 from google.cloud import storage
@@ -115,9 +117,7 @@ def get_client() -> genai.Client:
             GCP_PROJECT,
             GCP_LOCATION,
         )
-        return genai.Client(
-            vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION
-        )
+        return genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
     logger.info("Gemini client mode=AI-Studio (API key)")
     return genai.Client(api_key=get_api_key())
 
@@ -227,9 +227,7 @@ def _submit_batch_vertex(
         json.dumps(
             {
                 "request": {
-                    "contents": [
-                        {"role": "user", "parts": [{"text": r.prompt}]}
-                    ],
+                    "contents": [{"role": "user", "parts": [{"text": r.prompt}]}],
                     "generation_config": {
                         "temperature": (
                             r.temperature
@@ -384,36 +382,85 @@ def generate_direct(
 
     max_workers = max(1, int(concurrency or DIRECT_CONCURRENCY or 1))
 
+    # Retry list spans both client paths the genai SDK uses:
+    # - httpx for the generateContent call itself
+    # - requests/urllib3 for OAuth token refresh (google-auth)
+    # plus the rare bare ssl.SSLError surfaced under urllib3.
     _DIRECT_RETRY_ERRORS: tuple[type[Exception], ...] = (
         httpx.ReadTimeout,
         httpx.ConnectTimeout,
         httpx.ConnectError,
         httpx.RemoteProtocolError,
         httpx.ReadError,
+        httpx.WriteError,
+        httpx.PoolTimeout,
+        req_exceptions.SSLError,
+        req_exceptions.ConnectionError,
+        req_exceptions.Timeout,
+        req_exceptions.ChunkedEncodingError,
+        ssl.SSLError,
         gax_exceptions.ServiceUnavailable,
         gax_exceptions.DeadlineExceeded,
+        gax_exceptions.InternalServerError,
+        gax_exceptions.GatewayTimeout,
+        gax_exceptions.TooManyRequests,
     )
-    _MAX_DIRECT_ATTEMPTS = 3
+    _MAX_DIRECT_ATTEMPTS = 5
+
+    # Pre-warm the OAuth token by making one call serially before unleashing
+    # the thread pool. Otherwise all workers race to refresh credentials from
+    # oauth2.googleapis.com on the very first call, which frequently causes
+    # SSL EOF errors under load. After this single call, the token is cached
+    # and shared by every worker.
+    if max_workers > 1:
+        try:
+            client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents="ping",
+                config=types.GenerateContentConfig(
+                    temperature=0.0, max_output_tokens=8
+                ),
+            )
+            logger.info("OAuth credentials pre-warmed for direct mode")
+        except Exception as exc:
+            logger.warning(
+                "OAuth pre-warm call failed (%s); workers will retry on first call",
+                exc,
+            )
 
     def _run_one(req: BatchRequest) -> dict:
         for attempt in range(_MAX_DIRECT_ATTEMPTS):
             try:
+                t0 = time.monotonic()
                 response = client.models.generate_content(
                     model=GEMINI_MODEL,
                     contents=req.prompt,
                     config=_build_generate_config(req),
                 )
-                return _row_from_response(req.run_id, response)
+                latency_ms = round((time.monotonic() - t0) * 1000)
+                row = _row_from_response(req.run_id, response)
+                row["latency_ms"] = latency_ms
+                return row
             except _DIRECT_RETRY_ERRORS as exc:
                 if attempt < _MAX_DIRECT_ATTEMPTS - 1:
-                    wait = 10 * (2 ** attempt)
+                    # Exponential backoff with jitter to avoid thundering herd.
+                    wait = min(60, 5 * (2**attempt))
                     logger.warning(
                         "Direct generation transient error for %s (attempt %d/%d, retry in %ds): %s",
-                        req.run_id, attempt + 1, _MAX_DIRECT_ATTEMPTS, wait, exc,
+                        req.run_id,
+                        attempt + 1,
+                        _MAX_DIRECT_ATTEMPTS,
+                        wait,
+                        exc,
                     )
                     time.sleep(wait)
                 else:
-                    logger.error("Direct generation failed for %s after %d attempts: %s", req.run_id, _MAX_DIRECT_ATTEMPTS, exc)
+                    logger.error(
+                        "Direct generation failed for %s after %d attempts: %s",
+                        req.run_id,
+                        _MAX_DIRECT_ATTEMPTS,
+                        exc,
+                    )
                     return _error_row(req.run_id, f"direct_error: {exc!r}")
             except Exception as exc:
                 logger.error("Direct generation failed for %s: %s", req.run_id, exc)
@@ -566,7 +613,13 @@ def _pop_run_id(pending: dict[str, deque[str]], prompt: str) -> str | None:
 
 
 def _row_from_response(run_id: str | None, resp: Any) -> dict:
-    """Build a result row from a `GenerateContentResponse`-shaped object."""
+    """Build a result row from a `GenerateContentResponse`-shaped object.
+
+    `latency_ms` is intentionally omitted here (set to None) — callers that
+    have wall-clock timing (i.e. `generate_direct`) mutate the returned dict
+    directly after the timed API call. Batch-mode callers never have per-row
+    timing, so the field stays None.
+    """
     text = ""
     if resp is not None:
         text = getattr(resp, "text", "") or ""
@@ -584,6 +637,7 @@ def _row_from_response(run_id: str | None, resp: Any) -> dict:
         "tokens_in": getattr(usage, "prompt_token_count", 0) or 0,
         "tokens_out": getattr(usage, "candidates_token_count", 0) or 0,
         "cached_tokens": getattr(usage, "cached_content_token_count", 0) or 0,
+        "latency_ms": None,  # filled in by generate_direct; null for batch mode
         "error": None,
     }
 
@@ -594,6 +648,7 @@ def _row_from_vertex_response(run_id: str, response: dict) -> dict:
     Vertex returns the raw `GenerateContentResponse` JSON, which uses
     camelCase keys (`usageMetadata.promptTokenCount`) rather than the
     snake_case attrs the Python SDK exposes on inline responses.
+    Batch jobs have no per-request wall-clock timing, so `latency_ms` is None.
     """
     text = ""
     candidates = response.get("candidates") or []
@@ -610,6 +665,7 @@ def _row_from_vertex_response(run_id: str, response: dict) -> dict:
         "tokens_in": usage.get("promptTokenCount", 0) or 0,
         "tokens_out": usage.get("candidatesTokenCount", 0) or 0,
         "cached_tokens": usage.get("cachedContentTokenCount", 0) or 0,
+        "latency_ms": None,  # batch mode — no per-row wall-clock time
         "error": None,
     }
 
@@ -621,6 +677,7 @@ def _error_row(run_id: str | None, msg: str) -> dict:
         "tokens_in": 0,
         "tokens_out": 0,
         "cached_tokens": 0,
+        "latency_ms": None,
         "error": msg,
     }
 

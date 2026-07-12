@@ -25,14 +25,17 @@ def _build_request(
     few_shot_pool: list[dict],
     few_shot_count: int,
 ) -> GradingRequest:
-    rubric = (
-        problem["rubric_structured"]
-        if scenario.structured_rubric
-        else problem["rubric_unstructured"]
-    )
-    few_shot_examples = (
-        list(few_shot_pool[:few_shot_count]) if scenario.few_shot else None
-    )
+    rubric = problem["rubric_structured"] if scenario.structured_rubric else None
+    few_shot_examples = None
+    if scenario.few_shot:
+        problem_examples = [
+            ex for ex in few_shot_pool if ex.get("problem_id") == problem["problem_id"]
+        ]
+        pool = problem_examples or few_shot_pool
+        few_shot_examples = [
+            {k: v for k, v in ex.items() if k != "problem_id"}
+            for ex in pool[:few_shot_count]
+        ]
     return GradingRequest(
         problem_description=problem["description"],
         student_code=submission["code"],
