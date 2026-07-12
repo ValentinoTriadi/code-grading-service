@@ -1,0 +1,9 @@
+# Penelitian Terkait
+
+*Draft paragraf "Penelitian Terkait / Latar Belakang" — konteks diferensiasi dari PPMI STEI ITB 2025.*
+
+---
+
+Penelitian serupa mengenai pemanfaatan LLM dan teknik prompt engineering untuk membantu pemeriksaan ujian pemrograman telah dilakukan oleh tim PPMI STEI ITB 2025. Penelitian tersebut mengkaji bagaimana LLM dapat diadaptasi untuk membantu penilaian ujian pemrograman di ITB, dengan fokus pada notasi algoritmik dan memanfaatkan beberapa teknik prompt engineering — yaitu zero-shot, few-shot, dan chain-of-thought — yang dilengkapi matriks dan rubrik penilaian. Hasilnya menunjukkan bahwa LLM berpotensi membantu proses penilaian. Namun, evaluasi pada penelitian tersebut difokuskan semata pada aspek akurasi, yakni seberapa dekat skor LLM dengan skor penilai manusia.
+
+Fokus pada akurasi saja belum cukup untuk menilai kelayakan sebuah LLM-grader dalam penerapan nyata. Sebuah sistem penilaian yang akurat secara rata-rata namun tidak stabil pada setiap pemanggilan sulit dipercaya untuk menilai submisi individual, dan keluaran yang tidak dapat di-parse menjadi skor terstruktur membuat sistem tidak dapat dioperasikan terlepas dari akurasinya. Oleh karena itu, tugas akhir ini memperdalam penelitian terdahulu dengan menambahkan dua aspek yang menentukan kelayakan penerapan, yaitu konsistensi (kestabilan skor pada pemanggilan berulang) dan kemampuan menghasilkan respons yang dapat dipahami sistem (deployability). Selain itu, pendalaman dilakukan dari sisi pengukuran: kontribusi tiap komponen prompt engineering dianalisis secara statistik melalui Analysis of Variance (ANOVA) pada desain faktorial penuh, sementara konsistensi diukur menggunakan Intraclass Correlation Coefficient (ICC). Pengujian juga dilakukan pada kode program nyata dalam beberapa bahasa pemrograman, termasuk persoalan concurrency, sehingga melengkapi cakupan penelitian terdahulu yang berfokus pada notasi algoritmik.

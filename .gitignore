@@ -216,3 +216,9 @@ google-cloud-sdk/
 google-cloud-cli-*.tar.gz
 
 .env.experiment
+
+# Experiment raw result dumps — large per-scenario/per-request response
+# logs. Keep only the aggregated summary.txt and state.json versioned.
+experiments/results/*/
+experiments/results/phase1.jsonl
+experiments/results/phase2.jsonl
