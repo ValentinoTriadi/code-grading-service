@@ -1,3 +1,4 @@
+import type { FewShotPayload } from "./lib/grading-form"
 import type { GradingResponse } from "./types"
 
 const BASE = "/api/v1"
@@ -6,6 +7,7 @@ export interface InlineGradingParams {
   problems: string
   code: string
   rubric?: string
+  few_shot_examples?: FewShotPayload[]
   with_reason: boolean
 }
 
@@ -13,6 +15,7 @@ export interface FileGradingParams {
   problems: string
   code: File
   rubric?: string
+  few_shot_examples?: FewShotPayload[]
   with_reason: boolean
 }
 
@@ -20,6 +23,7 @@ export interface BatchGradingParams {
   problems: string
   files: File
   rubric?: string
+  few_shot_examples?: FewShotPayload[]
   with_reason: boolean
 }
 
@@ -41,6 +45,9 @@ export async function gradeFile(params: FileGradingParams): Promise<GradingRespo
   form.append("problems", params.problems)
   form.append("code", params.code)
   if (params.rubric) form.append("rubric", params.rubric)
+  if (params.few_shot_examples?.length) {
+    form.append("few_shot_examples", JSON.stringify(params.few_shot_examples))
+  }
   form.append("with_reason", String(params.with_reason))
 
   const res = await fetch(`${BASE}/grade/file`, { method: "POST", body: form })
@@ -56,6 +63,9 @@ export async function gradeBatch(params: BatchGradingParams): Promise<Blob> {
   form.append("problems", params.problems)
   form.append("files", params.files)
   if (params.rubric) form.append("rubric", params.rubric)
+  if (params.few_shot_examples?.length) {
+    form.append("few_shot_examples", JSON.stringify(params.few_shot_examples))
+  }
   form.append("with_reason", String(params.with_reason))
 
   const res = await fetch(`${BASE}/grade/batch`, { method: "POST", body: form })
@@ -108,6 +118,9 @@ export async function* gradeFileStream(params: FileGradingParams): AsyncGenerato
   form.append("problems", params.problems)
   form.append("code", params.code)
   if (params.rubric) form.append("rubric", params.rubric)
+  if (params.few_shot_examples?.length) {
+    form.append("few_shot_examples", JSON.stringify(params.few_shot_examples))
+  }
   form.append("with_reason", String(params.with_reason))
   yield* streamPost(`${BASE}/grade/file/stream`, form) as AsyncGenerator<GradingProgressEvent>
 }
@@ -122,6 +135,9 @@ export async function* gradeBatchStream(params: BatchGradingParams): AsyncGenera
   form.append("problems", params.problems)
   form.append("files", params.files)
   if (params.rubric) form.append("rubric", params.rubric)
+  if (params.few_shot_examples?.length) {
+    form.append("few_shot_examples", JSON.stringify(params.few_shot_examples))
+  }
   form.append("with_reason", String(params.with_reason))
 
   const res = await fetch(`${BASE}/grade/batch/stream`, { method: "POST", body: form })

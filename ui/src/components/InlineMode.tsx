@@ -3,6 +3,14 @@ import { gradeInlineStream } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  buildRubricString,
+  emptyCriterion,
+  normalizeExamples,
+  type FewShotExample,
+  type RubricCriterion,
+  type RubricMode,
+} from "@/lib/grading-form"
 import { CommonFields } from "./CommonFields"
 import { GradingProgress } from "./GradingProgress"
 import type { GradingResponse } from "@/types"
@@ -17,8 +25,13 @@ interface Progress { step: number; total: number; message: string }
 export function InlineMode({ onResult, onError }: Props) {
   const [problems, setProblems] = useState("")
   const [code, setCode] = useState("")
-  const [rubric, setRubric] = useState("")
-  const [withReason, setWithReason] = useState(false)
+  const [rubricMode, setRubricMode] = useState<RubricMode>("guided")
+  const [rubricText, setRubricText] = useState("")
+  const [rubricCriteria, setRubricCriteria] = useState<RubricCriterion[]>(() => [
+    emptyCriterion(),
+  ])
+  const [examples, setExamples] = useState<FewShotExample[]>([])
+  const [withReason, setWithReason] = useState(true)
   const [isRunning, setIsRunning] = useState(false)
   const [progress, setProgress] = useState<Progress | null>(null)
 
@@ -27,7 +40,15 @@ export function InlineMode({ onResult, onError }: Props) {
     setIsRunning(true)
     setProgress(null)
     try {
-      for await (const event of gradeInlineStream({ problems, code, rubric: rubric || undefined, with_reason: withReason })) {
+      const rubric = buildRubricString(rubricMode, rubricText, rubricCriteria)
+      const few_shot_examples = normalizeExamples(examples)
+      for await (const event of gradeInlineStream({
+        problems,
+        code,
+        rubric,
+        few_shot_examples,
+        with_reason: withReason,
+      })) {
         if (event.type === "error") throw new Error(event.message)
         if (event.type === "progress") setProgress({ step: event.step, total: event.total, message: event.message })
         if (event.type === "result") onResult(event.data)
@@ -44,10 +65,16 @@ export function InlineMode({ onResult, onError }: Props) {
     <div className="space-y-6">
       <CommonFields
         problems={problems}
-        rubric={rubric}
+        rubricMode={rubricMode}
+        rubricText={rubricText}
+        rubricCriteria={rubricCriteria}
+        examples={examples}
         withReason={withReason}
         onProblemsChange={setProblems}
-        onRubricChange={setRubric}
+        onRubricModeChange={setRubricMode}
+        onRubricTextChange={setRubricText}
+        onRubricCriteriaChange={setRubricCriteria}
+        onExamplesChange={setExamples}
         onWithReasonChange={setWithReason}
       />
 

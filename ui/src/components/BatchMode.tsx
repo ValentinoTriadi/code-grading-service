@@ -2,6 +2,14 @@ import { useState } from "react"
 import { gradeBatchStream } from "@/api"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  buildRubricString,
+  emptyCriterion,
+  normalizeExamples,
+  type FewShotExample,
+  type RubricCriterion,
+  type RubricMode,
+} from "@/lib/grading-form"
 import { CommonFields } from "./CommonFields"
 import { FileDropzone } from "./FileDropzone"
 import { GradingProgress } from "./GradingProgress"
@@ -35,8 +43,13 @@ function triggerDownload(blob: Blob): string {
 export function BatchMode({ onError }: Props) {
   const [problems, setProblems] = useState("")
   const [file, setFile] = useState<File | null>(null)
-  const [rubric, setRubric] = useState("")
-  const [withReason, setWithReason] = useState(false)
+  const [rubricMode, setRubricMode] = useState<RubricMode>("guided")
+  const [rubricText, setRubricText] = useState("")
+  const [rubricCriteria, setRubricCriteria] = useState<RubricCriterion[]>(() => [
+    emptyCriterion(),
+  ])
+  const [examples, setExamples] = useState<FewShotExample[]>([])
+  const [withReason, setWithReason] = useState(true)
 
   const [isRunning, setIsRunning] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -54,10 +67,13 @@ export function BatchMode({ onError }: Props) {
     setStatusMessage("Uploading zip file…")
 
     try {
+      const rubric = buildRubricString(rubricMode, rubricText, rubricCriteria)
+      const few_shot_examples = normalizeExamples(examples)
       for await (const event of gradeBatchStream({
         problems,
         files: file,
-        rubric: rubric || undefined,
+        rubric,
+        few_shot_examples,
         with_reason: withReason,
       })) {
         if (event.type === "error") {
@@ -99,10 +115,16 @@ export function BatchMode({ onError }: Props) {
 
       <CommonFields
         problems={problems}
-        rubric={rubric}
+        rubricMode={rubricMode}
+        rubricText={rubricText}
+        rubricCriteria={rubricCriteria}
+        examples={examples}
         withReason={withReason}
         onProblemsChange={setProblems}
-        onRubricChange={setRubric}
+        onRubricModeChange={setRubricMode}
+        onRubricTextChange={setRubricText}
+        onRubricCriteriaChange={setRubricCriteria}
+        onExamplesChange={setExamples}
         onWithReasonChange={setWithReason}
       />
 
