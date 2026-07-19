@@ -111,7 +111,10 @@ def get_client() -> genai.Client:
     uses the `GEMINI_API_KEY` env var.
     """
     if USE_VERTEX:
-        assert_vertex_config()
+        # The client needs only project + location + ADC. The GCS bucket is a
+        # Vertex-Batch concern, asserted in submit_batch, so direct mode can run
+        # without a bucket configured.
+        assert_vertex_config(require_bucket=False)
         logger.info(
             "Gemini client mode=Vertex project=%s location=%s",
             GCP_PROJECT,
@@ -160,6 +163,7 @@ def submit_batch(
     if not requests:
         raise ValueError("submit_batch called with empty requests")
     if USE_VERTEX:
+        assert_vertex_config(require_bucket=True)
         return _submit_batch_vertex(client, requests, display_name)
     return _submit_batch_aistudio(client, requests, display_name)
 

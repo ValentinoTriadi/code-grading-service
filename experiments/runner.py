@@ -42,6 +42,7 @@ from src.engine.response_parser import ResponseParser
 from experiments import analysis, state
 from experiments.config import (
     DATASET_DIR,
+    FEWSHOT_DIR,
     DIRECT_CONCURRENCY,
     FEW_SHOT_COUNT,
     GEMINI_MAX_OUTPUT_TOKENS,
@@ -91,7 +92,9 @@ class Cell:
 def load_dataset() -> tuple[list[dict], list[dict], list[dict]]:
     problems = json.loads((DATASET_DIR / "problems.json").read_text())
     submissions = json.loads((DATASET_DIR / "submissions.json").read_text())
-    few_shot = json.loads((DATASET_DIR / "few_shot.json").read_text())
+    # Few-shot examples stay on the calibrated pool (FEWSHOT_DIR, default
+    # dataset) even when DATASET_DIR points at the holdout set.
+    few_shot = json.loads((FEWSHOT_DIR / "few_shot.json").read_text())
     return problems, submissions, few_shot
 
 
@@ -100,7 +103,7 @@ def assert_human_scores(submissions: list[dict]) -> None:
     if missing:
         raise RuntimeError(
             f"{len(missing)} submission(s) have human_score=null. "
-            f"Fill in experiments/dataset/submissions.json before Phase 1. "
+            f"Fill in {DATASET_DIR / 'submissions.json'} before Phase 1. "
             f"First few missing: {missing[:5]}"
         )
 

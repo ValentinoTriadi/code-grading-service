@@ -26,6 +26,7 @@ class ResponseParser:
         if result is not None:
             score, feedback_detail = result
             feedback = feedback_detail.summary if feedback_detail else ""
+
             logger.debug(
                 "Parsed RESULT block — score=%.1f, criteria=%d, suggestions=%d, thinking=%s",
                 score,
@@ -33,6 +34,7 @@ class ResponseParser:
                 len(feedback_detail.suggestions) if feedback_detail else 0,
                 "present" if thinking else "absent",
             )
+            
             return GradingResponse(
                 score=score,
                 feedback=feedback.strip(),
@@ -82,6 +84,7 @@ class ResponseParser:
                     "falling back to legacy parser"
                 )
                 return None
+            
             logger.warning("RESULT block was truncated — repaired and parsed partially")
 
         if not isinstance(data, dict):
@@ -107,10 +110,17 @@ class ResponseParser:
         return score, feedback_detail
 
     def _extract_tag(self, text: str, tag: str) -> str | None:
-        # Standard form: <TAG>content</TAG>
-        match = re.search(rf"<{tag}>(.*?)</{tag}>", text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1)
+        # Standard form: <TAG>content</TAG>. Anchor on the LAST opening tag so an
+        # earlier *mention* of the tag inside reasoning (e.g. a literal "<RESULT>"
+        # the model writes while narrating its plan in the THINKING block) does not
+        # swallow the prose in front of the real block.
+        opens = list(re.finditer(rf"<{tag}>", text, re.IGNORECASE))
+        if opens:
+            start = opens[-1].end()
+            close = re.search(rf"</{tag}>", text[start:], re.IGNORECASE)
+            if close:
+                return text[start : start + close.start()]
+
         # Tolerant fallback: opening tag with missing `>` (e.g. `<TAG\ncontent`)
         match = re.search(
             rf"<{tag}\s*\n(.*?)</{tag}>", text, re.DOTALL | re.IGNORECASE
@@ -120,14 +130,15 @@ class ResponseParser:
                 "Malformed opening tag <%s> (missing '>') — using tolerant parser", tag
             )
             return match.group(1)
-        # Final fallback: opening tag present but closing tag missing — return
-        # everything after the opening tag so the caller can attempt JSON repair.
-        match = re.search(rf"<{tag}>(.*)", text, re.DOTALL | re.IGNORECASE)
-        if match:
+
+        # Final fallback: last opening tag present but closing tag missing — return
+        # everything after it so the caller can attempt JSON repair.
+        if opens:
             logger.warning(
                 "Missing closing </%s> tag — attempting truncation recovery", tag
             )
-            return match.group(1)
+            return text[opens[-1].end() :]
+
         return None
 
     @staticmethod
@@ -186,6 +197,7 @@ class ResponseParser:
     def _coerce_score(value: object) -> float:
         if isinstance(value, (int, float)):
             return max(0.0, min(100.0, float(value)))
+        
         if isinstance(value, str):
             number_match = re.search(r"-?[\d]+(?:[.,]\d+)?", value.strip())
             if number_match:

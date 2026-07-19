@@ -54,7 +54,7 @@ def sum_array(arr):
     return total
 """
 _N_REQUESTS = 10          # jumlah request untuk mengukur latensi
-_LATENCY_P95_LIMIT = 60   # detik — batas atas P95 yang masih dianggap acceptable
+_LATENCY_P95_LIMIT = 10   # detik — batas atas P95 yang masih dianggap acceptable
 _RELIABILITY_MIN = 0.90   # 90% sukses = reliable
 
 
@@ -129,9 +129,9 @@ class TestLatency:
         latencies = []
         scores = []
 
-        print(f"\n\n{'='*60}")
+        print(f"\n\n{'='*10}")
         print(f"TF-NF-01 — Pengukuran Latensi (N={_N_REQUESTS} request, sequential)")
-        print(f"{'='*60}")
+        print(f"{'='*10}")
 
         for i in range(_N_REQUESTS):
             lat, ok, score = await _one_request(svc)
@@ -155,7 +155,7 @@ class TestLatency:
         print(f"    Latensi maks      : {max_lat:.2f} s")
         if scores:
             print(f"    Skor rata-rata    : {statistics.mean(scores):.1f}")
-        print(f"{'='*60}\n")
+        print(f"{'='*10}\n")
 
         # Soft assertion — P95 harus di bawah batas acceptable
         assert p95_lat < _LATENCY_P95_LIMIT, (
@@ -163,14 +163,14 @@ class TestLatency:
         )
 
     @pytest.mark.anyio
-    async def test_tf_nf_02_single_request_latency_under_60s(self):
-        """TF-NF-02: Satu request grading selesai dalam 60 detik."""
+    async def test_tf_nf_02_single_request_latency_under_10s(self):
+        """TF-NF-02: Satu request grading selesai dalam 10 detik."""
         svc = _build_service()
         lat, ok, score = await _one_request(svc)
 
         print(f"\n  TF-NF-02: latensi = {lat:.2f}s  ok={ok}  skor={score}")
         assert ok, "Request gagal (exception dari provider)"
-        assert lat < 60.0, f"Latensi {lat:.1f}s > 60s"
+        assert lat < 10.0, f"Latensi {lat:.1f}s > 10s"
 
 
 class TestReliability:
@@ -187,9 +187,9 @@ class TestReliability:
         svc = _build_service()
         results = []
 
-        print(f"\n\n{'='*60}")
+        print(f"\n\n{'='*10}")
         print(f"TF-NF-03 — Pengukuran Reliability (N={_N_REQUESTS} request)")
-        print(f"{'='*60}")
+        print(f"{'='*10}")
 
         for i in range(_N_REQUESTS):
             lat, ok, score = await _one_request(svc)
@@ -205,7 +205,7 @@ class TestReliability:
         print(f"    Gagal      : {_N_REQUESTS - n_success}")
         print(f"    Reliability: {reliability*100:.1f}%")
         print(f"    Batas min  : {_RELIABILITY_MIN*100:.0f}%")
-        print(f"{'='*60}\n")
+        print(f"{'='*10}\n")
 
         assert reliability >= _RELIABILITY_MIN, (
             f"Reliability {reliability*100:.1f}% di bawah batas {_RELIABILITY_MIN*100:.0f}%"

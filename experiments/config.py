@@ -10,9 +10,22 @@ import os
 from pathlib import Path
 
 EXPERIMENTS_DIR = Path(__file__).parent
-DATASET_DIR = EXPERIMENTS_DIR / "dataset"
-RESULTS_DIR = EXPERIMENTS_DIR / "results"
-STATE_FILE = EXPERIMENTS_DIR / "state.json"
+
+
+def _dir(env: str, default: Path) -> Path:
+    val = os.environ.get(env)
+    return Path(val) if val else default
+
+
+# Problems + submissions come from DATASET_DIR; few-shot examples come from
+# FEWSHOT_DIR. They differ for the held-out final test: point DATASET_DIR at
+# experiments/holdout (its own problems/submissions) while FEWSHOT_DIR stays on
+# the calibrated experiments/dataset/few_shot.json. Results + state also move so
+# a holdout run never overwrites the committed dataset run. See RUNBOOK § Holdout.
+DATASET_DIR = _dir("EXPERIMENT_DATASET_DIR", EXPERIMENTS_DIR / "dataset")
+FEWSHOT_DIR = _dir("EXPERIMENT_FEWSHOT_DIR", EXPERIMENTS_DIR / "dataset")
+RESULTS_DIR = _dir("EXPERIMENT_RESULTS_DIR", EXPERIMENTS_DIR / "results")
+STATE_FILE = _dir("EXPERIMENT_STATE_FILE", EXPERIMENTS_DIR / "state.json")
 PHASE1_RESULTS = RESULTS_DIR / "phase1.jsonl"
 PHASE2_RESULTS = RESULTS_DIR / "phase2.jsonl"
 
@@ -62,17 +75,21 @@ def get_api_key() -> str:
     return key
 
 
-def assert_vertex_config() -> None:
-    """Raise if EXPERIMENT_USE_VERTEX=true but project/location/bucket missing."""
-    missing = [
-        name
-        for name, val in [
-            ("GOOGLE_CLOUD_PROJECT", GCP_PROJECT),
-            ("GOOGLE_CLOUD_LOCATION", GCP_LOCATION),
-            ("EXPERIMENT_GCS_BUCKET", GCS_BUCKET),
-        ]
-        if not val
+def assert_vertex_config(require_bucket: bool = True) -> None:
+    """Raise if EXPERIMENT_USE_VERTEX=true but required Vertex env is missing.
+
+    The client only needs project + location (plus ADC). A GCS bucket is
+    required for Vertex *Batch* (input/output JSONL live in GCS); direct mode
+    (EXPERIMENT_USE_BATCH=false) never touches GCS, so pass
+    `require_bucket=False` there.
+    """
+    required = [
+        ("GOOGLE_CLOUD_PROJECT", GCP_PROJECT),
+        ("GOOGLE_CLOUD_LOCATION", GCP_LOCATION),
     ]
+    if require_bucket:
+        required.append(("EXPERIMENT_GCS_BUCKET", GCS_BUCKET))
+    missing = [name for name, val in required if not val]
     if missing:
         raise RuntimeError(
             "EXPERIMENT_USE_VERTEX=true requires " + ", ".join(missing) + ". "

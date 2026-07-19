@@ -1,0 +1,642 @@
+[
+  {
+    "submission_id": "cycle_01",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_01.c",
+    "code": "#include \"listlinier.h\"\n#include \"Boolean.h\"\n#include <stdio.h>\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    Address list[100000];\n    Address Q = FIRST(l);\n    int idx = 0;\n    list[idx] = Q;\n    while (Q != NULL){\n        for(int i =0; i <=idx; i++){\n            if (next(Q)==list[i]) return list[i];\n            ++idx;\n            list[idx]=next(Q);\n            Q=next(Q);\n        }\n    }\n    return NULL;\n}\n",
+    "olympia_score": 0.0,
+    "olympia_score_100": 0.0,
+    "human_score": 17.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 0.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 10.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 0.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_02",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_02.c",
+    "code": "\n#include \"listlinier.h\"\n#include \"Boolean.h\"\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    List l2;\n    CreateList(&l2);\n    Address p = l;\n    insertFirst(&l2, p);\n    for(int i = 0; i < length(l); i++){\n        if(indexOf(l2, p) == IDX_UNDEF){\n            insertLast(l2, NEXT(p));\n            p = NEXT(p);\n        }\n        else{\n            return p;\n        }\n    }\n    return NULL;\n}\n",
+    "olympia_score": 0.0,
+    "olympia_score_100": 0.0,
+    "human_score": 17.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 0.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 10.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 0.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_03",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_03.c",
+    "code": "#include \"listlinier.h\"\n#include \"Boolean.h\"\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    int a = length(l);\n    int b[a];\n    for(int i = 0; i < a; i++){\n        b[i] = getElmt(&l, i);\n    }\n    int target = -1;\n    for(int i = 0; i < a-1; i++){\n        if(b[i] > b[i+1]){\n            target = b[i];\n            break;\n        }\n    }\n    Address p;\n    for(int i = 0; i < a; i++){\n        if(b[i] == target){\n            p = i;\n            break;\n        }\n    }\n\n    return p;\n}",
+    "olympia_score": 0.0,
+    "olympia_score_100": 0.0,
+    "human_score": 12.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 0.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 0.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_04",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_04.c",
+    "code": "#include <stdio.h>\n#include \"cycle.h\"\n\nAddress findCycleEntryPoint(List l){\n    /*\n    Address curr = FIRST(l);\n    Address prev = NULL;\n    int max = -1;\n    int count = 0;\n    while(NEXT(curr) != NULL){\n        prev = curr;\n        curr = NEXT(curr);\n        if(INFO(prev) == INFO(curr)){\n            count++;\n        }\n        if(count > max){\n            max = count;\n        }\n    }\n        */\n    Address p = FIRST(l);\n    while(p != NULL){\n        if(INFO(NEXT(p)) == 999){\n            return NEXT(p);\n        } else {\n            int index = indexOf(l, INFO(p));\n            setElmt(&l, index, 999);\n            p = NEXT(p);\n        }\n    }\n    return NULL;\n}",
+    "olympia_score": 0.0,
+    "olympia_score_100": 0.0,
+    "human_score": 17.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 0.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 10.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 0.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_05",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_05.c",
+    "code": "#ifndef CYCLE_H\n#define CYCLE_H\n#include \"listlinier.h\"\n#include \"Boolean.h\"\n#include <stdio.h>\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    if(length(l)<=100000){\n        return NULL;\n    }\n    Address p = l;\n    for(int i=0; i<length(l); i++){\n        Address cek = l;\n        for(int j=0; j<i; j++){\n            if(NEXT(p) == cek){\n                return cek;\n            }\n            cek = NEXT(cek);\n        }\n        p = NEXT(p);\n    }\n}\n\n#endif",
+    "olympia_score": 0.25,
+    "olympia_score_100": 10.0,
+    "human_score": 26.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 9.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 5.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_06",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_06.c",
+    "code": "#include \"listlinier.h\"\n#include <stdio.h>\n#include <stdlib.h>\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    List curr = l;\n    while ((curr!=NULL))\n    {\n        int found = 0;\n        List debug = curr->next;\n        while (debug != NULL)\n        {\n            if(debug == curr) return debug;\n            debug = debug->next;\n        }\n        \n        curr = curr->next;\n    }\n    return NULL;\n}",
+    "olympia_score": 0.25,
+    "olympia_score_100": 10.0,
+    "human_score": 12.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 0.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 0.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_07",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_07.c",
+    "code": "#include \"listlinier.h\"\n#include \"Boolean.h\"\n#include \"stdlib.h\"\n#include \"stdio.h\"\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    int found = 1;\n    Address temp = l;\n    int arr[100005];\n    int pos = 0;\n    Address res = NULL;\n\n    while(temp != NULL){\n        // -1 berarti sudah diikunjungi\n        if( INFO(temp) == -1 ){\n            res = temp;\n        }\n\n        arr[pos] = INFO(temp);\n        INFO(temp) = -1;\n        pos++;\n        temp = temp->next;\n    }\n\n    if( res == NULL ){\n        return NULL;\n    }\n\n    pos = 0;\n    temp = l;\n    int count = 0;\n    while(count < 2){\n        // -1 berarti sudah diikunjungi\n        if( temp == res ) count++;\n        \n        if( temp < 2 ){\n            if( INFO(temp) == -1 ){\n                res = temp;\n            }\n\n            arr[pos] = INFO(temp);\n            INFO(temp) = arr[pos];\n            pos++;\n        }\n        temp = temp->next;\n    }\n    return temp;\n}\n\n// int main(){\n//     printf(\"doen\");\n//     Address a1 = newNode(1);\n//     Address a2 = newNode(2);\n//     Address a3 = newNode(3);\n//     Address a4 = newNode(4);\n//     Address a5 = newNode(4);\n//     Address a6 = newNode(4);\n//     a1->next = a2;\n//     a2->next = a3;\n//     a3->next = a4;\n//     a4->next = a5;\n//     a5->next = a6;\n//     a6->next = a3;\n//     List l; CreateList(&l);\n//     l = a1;\n//     printf(\"%d\", INFO(findCycleEntryPoint(l)));\n// }",
+    "olympia_score": 0.25,
+    "olympia_score_100": 10.0,
+    "human_score": 22.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 0.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 10.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 5.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_08",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_08.c",
+    "code": "#include <stdio.h>\n#include \"cycle.h\"\n\nAddress findCycleEntryPoint(List l)\n{\n    // List lis;\n    // CreateList(&lis);\n    // Address temp = l;\n    // int found = 1;\n    // while (found)\n    // {\n    //     for (int i = 0; i < length(lis); i++)\n    //     {\n    //         if (NEXT(temp) == getElmt(lis, i))\n    //         {\n    //             found = 0;\n    //             return NEXT(temp);\n    //             break;\n    //         }\n    //     }\n    //     insertLast(&lis, INFO(temp));\n    // }\n    return NULL;\n}\n\n// int main()\n// {\n//     List newL;\n//     CreateList(&newL);\n//     insertLast(&newL, 1);\n//     insertLast(&newL, 2);\n//     insertLast(&newL, 1);\n//     insertLast(&newL, 2);\n//     insertLast(&newL, 3);\n//     Address a = findCycleEntryPoint(newL);\n//     printf(\"%d\", a->info);\n// }",
+    "olympia_score": 0.25,
+    "olympia_score_100": 10.0,
+    "human_score": 26.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 9.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 5.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_09",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_09.c",
+    "code": "#ifndef CYCLE_H\n#define CYCLE_H\n#include \"listlinier.h\"\n#include \"Boolean.h\"\n#include \"stdlib.h\"\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    Address p = l;\n    int len = length(l);\n    int a[len];\n    for (int i=0; i< len; i++){\n        a[i]= p;\n        p= p->next;\n    }\n    int count;\n    for (int i=0; i< len; i++){\n        for (int j=0;j< len; j++){\n            if (i!= j){\n                if (a[i]==a[j]){\n                    return a[i];\n                }\n            }\n        }\n    }\n    return NULL;\n\n};\n\n#endif",
+    "olympia_score": 0.25,
+    "olympia_score_100": 10.0,
+    "human_score": 35.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 18.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 5.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_10",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_10.c",
+    "code": "#include \"listlinier.h\"\n#include <stdio.h>\n#include \"cycle.h\"\n#include \"Boolean.h\"\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    Address isi[length(l)+1];\n    Address current = FIRST(l);\n    boolean found = FALSE;\n    int idxFound;\n    int idx = 0;\n    while (current != NULL && found == FALSE)\n    {\n        isi[idx] = current;\n        if (idx > 0){\n            for(int i = 0; i <= idx; i++){\n                if(current == isi[i]){\n                    found == TRUE;\n                    idxFound = i;\n                }\n            }\n        }\n        current = current->next;\n        idx++;\n    }\n    if(found){\n        return isi[idxFound];\n    }\n    return NULL;\n}\n\n\n//  int main(){\n//     List l;\n//     int idx = 1;\n//     CreateList(&l);\n\n//     int n = 0;\n//     int i = 0;\n\n//     while(i < n){\n//         ElType el;\n//         scanf(\"%d\", &el);\n//         insertLast(&l, el);\n//         i++;\n//     }\n\n    \n\n//     displayList(l); printf(\"\\n\");  \n// }",
+    "olympia_score": 0.25,
+    "olympia_score_100": 10.0,
+    "human_score": 35.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 18.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 5.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_11",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_11.c",
+    "code": "#include \"listlinier.h\"\n#include \"Boolean.h\"\n#include <stdlib.h>\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l){\n    List arr[20] = {NULL};\n    Address p = l;\n    while(p!=NULL){\n        if(arr[((int)p)%20]!=NULL){\n            Address p2 = arr[((int)p)%20];\n            while(p2!=NULL){\n                if(((int)p)==INFO(p2)){\n                    return p;\n                }\n                p2 = NEXT(p2);\n            }\n            insertLast(&(arr[((int)p)%20]),((int)p));\n            p = NEXT(p);\n            continue;\n        }\n        else{\n            CreateList(&(arr[((int)p)%20]));\n            insertLast(&(arr[((int)p)%20]),((int)p));\n            p = NEXT(p);\n            continue;\n        }\n\n    }\n    return NULL;\n}",
+    "olympia_score": 1.25,
+    "olympia_score_100": 50.0,
+    "human_score": 59.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 32.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 10.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 10.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 7.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_12",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_12.c",
+    "code": "#include \"cycle.h\"\n#include \"listlinier.h\"\n#include <stdio.h> \n#include <stdlib.h> \n\nAddress findCycleEntryPoint(List l){\n    Address a = FIRST(l);\n    while (a != NULL){\n        if (NEXT(a) == NULL){\n            return NULL;\n        }\n        Address slow = NEXT(a);\n        if (NEXT(slow) == NULL){\n            return NULL;\n        }\n        Address fast = NEXT(slow);\n        while(slow != fast && fast != NULL){\n            if (NEXT(fast) == NULL){\n                return NULL;\n            }\n            if (fast == a){\n                return a;\n            }\n            fast = NEXT(NEXT(fast));\n            slow = NEXT(slow);\n\n        }\n\n        a = NEXT(a);\n    } \n}",
+    "olympia_score": 1.5,
+    "olympia_score_100": 60.0,
+    "human_score": 63.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 32.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 10.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 10.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_13",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_13.c",
+    "code": "#include \"listlinier.h\"\n#include \"Boolean.h\"\n#include <stdio.h>\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nint searching(Address arr[], Address check, int cnt){\n    for (int i = 0; i <= cnt; i++)\n    {\n        if (arr[i] == check)\n        {\n            return 1;\n        }\n    }\n    return 0;\n}\nAddress findCycleEntryPoint(List l){\n    Address satu[100];\n    int count = 0;\n    Address point = l;\n    while (point != NULL)\n    {\n        if (searching(satu, point, count))\n        {\n            return point;\n        }\n        satu[count++] = point;\n        point = NEXT(point);\n    }\n    return NULL; \n}  \n\n//  int main(){\n//      List l;\n//      CreateList(&l);\n//      insertFirst(&l, 1);\n//      insertLast(&l, 2);\n//      insertLast(&l, 3);\n//      insertLast(&l, 4);\n//      insertLast(&l, 2);\n\n//      removeAll(&l, 2);\n//      displayList(l);\n//  }",
+    "olympia_score": 1.5,
+    "olympia_score_100": 60.0,
+    "human_score": 63.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 32.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 15.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_14",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_14.c",
+    "code": "#include \"cycle.h\"\n#include <stdlib.h>\n#include <stdio.h>\n\nint find(Address arrAdd[], int n, Address val) {\n    for (int i = 0; i < n; i++) {\n        if (arrAdd[i] == val) return i;\n    }\n    return -1;\n}\n\n\nAddress findCycleEntryPoint(List l) {\n    Address addr[100000];\n    int i = 0;\n    while (l != NULL) {\n        addr[i++] = l;\n        l = l->next;\n        int found = find(addr, i, l);\n        if (found != -1) return addr[found];\n    }\n}\n\n\n// int main() {\n//     int n, val; scanf(\"%d\", &n);\n//     List *l; CreateList(l);\n//     for (int i = 0; i < n; i++) {\n//         scanf(\"%d\", &val);\n//         insertLast(l, val);\n//     }\n\n//     Address coba = (*l);\n//     Address loop;\n//     for (int i = 0; i < n; i++) {\n//         printf(\"i = %d, addr = %p\\n\", i, coba);\n//         coba = coba->next;\n//         if (i == n - 3) {\n//             loop = coba;\n//             printf(\"loop = %d, addr = %p\\n\", i, loop);\n//         }\n//     }\n//     Address ketemu = findCycleEntryPoint(*l);\n//     printf(\"K = %p\\n\", ketemu);\n// }",
+    "olympia_score": 2.0,
+    "olympia_score_100": 80.0,
+    "human_score": 63.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 32.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 15.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_15",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_15.c",
+    "code": "#include \"cycle.h\"\n#include \"listlinier.h\"\n#include <stdio.h>\n\nAddress findCycleEntryPoint(List l){\n    Address temp = FIRST(l);\n    int counterTemp = 0;\n    while(temp != NULL){\n        Address first = FIRST(l);\n        int counterFirst = 0;\n        while(first != temp && first != NULL){\n            counterFirst++;\n            first = NEXT(first);\n        }\n        // printf(\"counterTemp: %d; counterFirst: %d\\n\", counterTemp, counterFirst);\n        if(counterTemp != counterFirst){\n            return temp;\n        }\n        counterTemp++;\n        temp = NEXT(temp);\n    }\n    return NULL;\n}\n\n// int main(){\n//     List l1;\n//     CreateList(&l1);\n//     printf(\"hit\\n\");\n//     insertLast(&l1, 1);\n//     printf(\"hit\\n\");\n//     insertLast(&l1, 2);\n//     insertLast(&l1, 3);\n//     printf(\"hit\\n\");\n//     insertLast(&l1, 4);\n//     Address temp = FIRST(l1);\n//     for(int i = 0; i < 1; i++){\n//         temp = NEXT(temp);\n//     }\n//     printf(\"hit\\n\");\n//     Address tempL1 = FIRST(l1);\n//     while(NEXT(tempL1) != NULL){\n//         printf(\"tempL1 info: %d; address:%p\\n\", INFO(tempL1), tempL1);\n//         tempL1 = NEXT(tempL1);\n//     }\n//     printf(\"tempL1 info: %d; address:%p\\n\", INFO(tempL1), tempL1);\n//     printf(\"hit\\n\");\n//     printf(\"Address tempL1: %p; temp: %p\\n\", tempL1, temp);\n//     NEXT(tempL1) = temp;\n//     printf(\"hit\\n\");\n//     Address result = findCycleEntryPoint(l1);\n//     printf(\"result info: %d; address: %p\\n\", INFO(result), result);\n//     return 0;\n// }",
+    "olympia_score": 2.25,
+    "olympia_score_100": 90.0,
+    "human_score": 76.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 45.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 15.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_16",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_16.c",
+    "code": "#include <stdio.h>\n#include \"cycle.h\"\n#include \"listlinier.h\"\n#include \"Boolean.h\"\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l) {\n    Address arr[10000];\n    int idx = 0;\n    Address p = FIRST(l);\n    while (p != NULL) {\n        if (idx==0) {\n            arr[idx] = p;\n            idx++;\n            p = NEXT(p);\n            continue;\n        }\n\n\n        for (int i=0; i<idx; i++) {\n            if (p == arr[i]) {\n                return p;\n            }\n        }\n\n        arr[idx] = p;\n        p = NEXT(p);\n        idx++;\n    }\n    return NULL;\n}\n",
+    "olympia_score": 2.25,
+    "olympia_score_100": 90.0,
+    "human_score": 63.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 32.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 15.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_17",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_17.c",
+    "code": "#include <stdio.h>\n#include \"cycle.h\"\n#include \"listlinier.h\"\n#include <stddef.h>\n\nAddress findCycleEntryPoint(List l){\n    List new;\n    CreateList(&new);\n    Address p = l;\n    int found = 0;\n    Address x;\n    while(p != NULL && !found){\n        Address q = new;\n        while(q != NULL){\n            if(INFO(q) == INFO(p)){\n                // printf(\"%d\\n\",INFO(p));\n                found = 1;\n                x = p;\n                break;\n            }\n            q = NEXT(q);\n        }\n        insertLast(&new, INFO(p));\n        p = NEXT(p);\n        if(found){\n            break;\n        }\n    }\n    if(found){\n        return x;\n    }else{\n        return NULL;\n    }\n}\n\n// int main(){\n//     Node n1,n2,n3, n4;\n//     n1.info = 1; n1.next = &n2;\n//     n2.info = 2; n2.next = &n3;\n//     n3.info = 3, n3.next = &n4;\n//     n4.info = 4; n4.next = &n2;\n//     Address l = &n1;\n//     findCycleEntryPoint(l);\n// }",
+    "olympia_score": 2.25,
+    "olympia_score_100": 90.0,
+    "human_score": 58.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 32.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 10.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_18",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_18.c",
+    "code": "#include \"cycle.h\"\n#include <stdio.h>\n#include <stdbool.h>\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l) {\n    Address r[100000];\n    Address p = FIRST(l);\n    int lengthListR = 0;\n    while (p != NULL) {\n        bool found = false;\n        for (int i = 0; i < lengthListR && !found; i++) {\n            if (p == r[i]) {\n                return p;\n            }\n        }\n        if (found == false) {\n            r[lengthListR] = p;\n            lengthListR++;\n            p = NEXT(p);\n        }\n    }\n    return NULL;\n}",
+    "olympia_score": 2.25,
+    "olympia_score_100": 90.0,
+    "human_score": 76.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 45.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 5.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 15.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_19",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_19.c",
+    "code": "#include \"listlinier.h\"\n#include \"Boolean.h\"\n#include <stdio.h>\n\n/**\n * I.S. List l terdefinisi\n * F.S. Mengembalikan address node yang merupakan entrypoint dari cycle\n * Jika tidak ada cycle, kembalikan NULL\n */\nAddress findCycleEntryPoint(List l) {\n    if (l == NULL) {\n        return NULL;\n    }\n    else if (INFO(l) == -123456789) {\n        return l;\n    }\n    ElType temp = INFO(l);\n    INFO(l) = -123456789;\n    Address ret = findCycleEntryPoint(NEXT(l));\n    INFO(l) = temp;\n    return ret;\n}",
+    "olympia_score": 2.5,
+    "olympia_score_100": 100.0,
+    "human_score": 81.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 45.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 10.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 15.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 11.0,
+        "max_score": 15
+      }
+    ]
+  },
+  {
+    "submission_id": "cycle_20",
+    "problem_id": "H1",
+    "language": "c",
+    "source_file": "experiments/holdout/code/cycle_20.c",
+    "code": "#include <stdio.h>\n#include <stdlib.h>\n#include \"listlinier.h\"\n\nAddress findCycleEntryPoint(List l){\n    Address slow = l, fast = l;\n    while (fast != NULL && NEXT(fast) != NULL){\n        slow = NEXT(slow);\n        fast = NEXT(NEXT(fast));\n        if (slow == fast){\n            break;\n        }\n    }\n    if (fast == NULL || NEXT(fast) == NULL){\n        return NULL;\n    }\n\n    slow = l;\n    while (slow != fast){\n        slow = NEXT(slow);\n        fast = NEXT(fast);\n    }\n\n    return slow;\n}",
+    "olympia_score": 2.5,
+    "olympia_score_100": 100.0,
+    "human_score": 100.0,
+    "human_score_breakdown": [
+      {
+        "name": "Correctness",
+        "score": 45.0,
+        "max_score": 45
+      },
+      {
+        "name": "Efficiency",
+        "score": 25.0,
+        "max_score": 25
+      },
+      {
+        "name": "Approach",
+        "score": 15.0,
+        "max_score": 15
+      },
+      {
+        "name": "Code Quality",
+        "score": 15.0,
+        "max_score": 15
+      }
+    ]
+  }
+]

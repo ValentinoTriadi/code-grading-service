@@ -1,0 +1,39 @@
+{
+  "phase1": {
+    "batches": {
+      "S8": {
+        "batch_name": null,
+        "status": "SUCCEEDED",
+        "request_count": 20,
+        "error": null
+      }
+    },
+    "complete": true,
+    "best_scenario_id": "S8",
+    "worst_case_id": "H1",
+    "metrics": {
+      "S8": {
+        "n": 20,
+        "n_total": 20,
+        "schema_valid_rate": 1.0,
+        "mae": 14.1,
+        "mae_normalized": 0.141,
+        "pearson": 0.7977279291189948,
+        "icc": 0.7886539943807652,
+        "icc_ci_lo": 0.55,
+        "icc_ci_hi": 0.91
+      }
+    }
+  },
+  "phase2": {
+    "batch": {
+      "batch_name": null,
+      "status": "PENDING",
+      "request_count": 0,
+      "error": null
+    },
+    "complete": false,
+    "icc": null,
+    "icc_ci": null
+  }
+}

@@ -164,6 +164,15 @@ def compute_phase1_anova(
     if not records:
         return None
     df = pd.DataFrame.from_records(records)
+    # The 3-way factorial needs ≥2 levels in every factor. A filtered run (e.g.
+    # the held-out winner-only test with a single scenario) holds factors
+    # constant → singular design; skip the ANOVA rather than crash.
+    if any(df[factor].nunique() < 2 for factor in ("rubric", "cot", "fewshot")):
+        logger.info(
+            "ANOVA skipped — factors not fully varied (%d scenario level(s))",
+            df[["rubric", "cot", "fewshot"]].drop_duplicates().shape[0],
+        )
+        return None
     model = ols("abs_error ~ C(rubric) * C(cot) * C(fewshot)", data=df).fit()
     table = sm.stats.anova_lm(model, typ=2)
 
@@ -461,9 +470,13 @@ def compute_icc(matrix: list[list[float]]) -> tuple[float, tuple[float, float]]:
         result = pg.intraclass_corr(
             data=df, targets="target", raters="rater", ratings="score"
         ).set_index("Type")
-        # ICC(A,1) = ICC2 in pingouin's nomenclature (two-way mixed, single rater, absolute)
-        row = result.loc["ICC2"]
-        return float(row["ICC"]), (float(row["CI95%"][0]), float(row["CI95%"][1]))
+        # ICC(A,1) = two-way mixed/random, single rater, absolute agreement.
+        # pingouin's row label changed from "ICC2" (<0.5) to "ICC(A,1)" (>=0.5),
+        # and the CI column from "CI95%" to "CI95"; support both.
+        row = result.loc["ICC(A,1)"] if "ICC(A,1)" in result.index else result.loc["ICC2"]
+        ci_col = "CI95" if "CI95" in result.columns else "CI95%"
+        ci = row[ci_col]
+        return float(row["ICC"]), (float(ci[0]), float(ci[1]))
     except Exception as exc:  # pragma: no cover — optional dep
         logger.info(
             "pingouin unavailable (%s); falling back to Fisher-z approximation",
