@@ -147,11 +147,13 @@ class PromptOrchestrator:
 
         cacheable_prefix = "\n\n".join(prefix_sections)
         dynamic_suffix = self._build_task_section(request)
+
         logger.debug(
             "Prompt built — prefix=%d chars, suffix=%d chars",
             len(cacheable_prefix),
             len(dynamic_suffix),
         )
+        
         return StructuredPrompt(
             cacheable_prefix=cacheable_prefix, dynamic_suffix=dynamic_suffix
         )

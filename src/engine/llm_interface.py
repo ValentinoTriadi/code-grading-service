@@ -61,9 +61,14 @@ class LLMInterface:
     async def generate(self, prompt: str) -> str:
         """Send prompt to the LLM and return the raw text response."""
         provider_name = type(self.provider).__name__
+
         if self.rate_limiter is not None:
             await self.rate_limiter.acquire()
+
         logger.info("Sending prompt to %s (%d chars)", provider_name, len(prompt))
+
         raw = await self.provider.generate(prompt)
+
         logger.info("Response received from %s (%d chars)", provider_name, len(raw))
+        
         return raw

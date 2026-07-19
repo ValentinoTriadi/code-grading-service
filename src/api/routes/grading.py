@@ -24,6 +24,7 @@ def _parse_examples_form(raw: str | None) -> list[dict] | None:
     """
     if not raw or not raw.strip():
         return None
+    
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -31,14 +32,17 @@ def _parse_examples_form(raw: str | None) -> list[dict] | None:
             status_code=400,
             detail=f"few_shot_examples must be valid JSON: {exc.msg}",
         )
+    
     if not isinstance(data, list):
         raise HTTPException(
             status_code=400, detail="few_shot_examples must be a JSON array"
         )
+    
     try:
         parsed = [FewShotExample.model_validate(item) for item in data]
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=exc.errors())
+    
     return [ex.model_dump() for ex in parsed]
 
 _COMMON_ERRORS = {
