@@ -1,0 +1,63 @@
+======================================================================
+EXPERIMENT SUMMARY
+======================================================================
+
+  Sampling temperature : 0.7
+
+  Best scenario   : S8  (all-on)
+  Structured rubric : yes
+  Chain-of-thought  : yes
+  Few-shot examples : yes
+
+  Composite picker config (how the winner was chosen):
+    Parse rate floor : ≥ 90%  (deployability gate — sub-floor scenarios disqualified)
+    Weights          : MAE×2  +  (1−r)×1  on z-scored values across survivors
+    Formula          : 2·z_MAE + 1·z_(1−r); lower z = better
+
+  Phase 1 — accuracy + deployability (n=142/144 parsed)
+    Parse rate       : 98.6%
+    MAE              : 10.97 pts  (0.1097 normalised)
+    Pearson r        : 0.724
+    ICC(A,1)         : 0.687  [0.589, 0.766]
+
+  Phase 2 — consistency (19 submissions × 7 reps)
+    ICC(A,1)         : 0.882  (95% CI 0.714 … 0.954)
+    Interpretation   : good  (Koo & Li 2016)
+
+  All scenarios ranked by composite (parse_rate ≥ 90% gate; then 2·z_MAE + 1·z_(1−r); lower = better):
+    1. S8  (all-on)              parse  98.6%  MAE 10.97  r 0.724  ICC 0.687  z -2.822  <-- winner
+    2. S5  (rubric+cot)          parse  98.6%  MAE 10.70  r 0.669  ICC 0.651  z -1.464
+    3. S7  (cot+fewshot)         parse  97.9%  MAE 16.93  r 0.692  ICC 0.548  z +1.784
+    4. S3  (cot-only)            parse  95.8%  MAE 15.72  r 0.638  ICC 0.545  z +2.502
+    5. S4  (fewshot-only)        parse  31.9%  MAE 9.89  r 0.720  ICC 0.704  z disqual.
+    6. S6  (rubric+fewshot)      parse  34.0%  MAE 10.80  r 0.670  ICC 0.659  z disqual.
+    7. S2  (rubric-only)         parse  27.1%  MAE 11.99  r 0.667  ICC 0.578  z disqual.
+    8. S1  (baseline)            parse   0.0%  MAE —  r —  ICC —  z —
+
+  3-way ANOVA on |human − LLM|  (n=697, factors: rubric × cot × fewshot)
+    rubric                      F=  10.24  p= 0.0014 **    η²p=0.015   (small)
+    cot                         F=  10.16  p= 0.0015 **    η²p=0.015   (small)
+    fewshot                     F=   0.03  p= 0.8519 ns    η²p=0.000   (trivial)
+    rubric:cot                  F=  10.10  p= 0.0015 **    η²p=0.014   (small)
+    rubric:fewshot              F=   0.14  p= 0.7092 ns    η²p=0.000   (trivial)
+    cot:fewshot                 F=   0.87  p= 0.3506 ns    η²p=0.001   (trivial)
+    rubric:cot:fewshot          F=   0.02  p= 0.8819 ns    η²p=0.000   (trivial)
+    legend: *** p<0.001  ** p<0.01  * p<0.05  . p<0.1  ns p≥0.1
+
+    Interpretation:
+      Significant main effects : rubric (**, η²p=0.015), cot (**, η²p=0.015)
+      Significant interactions : rubric:cot (**, η²p=0.014)
+      No measurable effect     : fewshot, rubric:fewshot, cot:fewshot, rubric:cot:fewshot
+      Key finding              : MAE reduction primarily attributable to rubric, cot, rubric:cot
+
+  Timing  (direct mode only; null = batch / old run)
+    Phase 1 (all scenarios, serial):
+      Total wall time    : 173.7 min
+    Winner (S8) per-request:
+      mean 11167 ms  p50 10250 ms  p95 18694 ms  (n=144)
+    Phase 2 per-request:
+      mean 14374 ms  p50 13585 ms  p95 23356 ms  total 38.6 min  (n=161)
+
+  Worst case for Phase 2 : P6
+
+======================================================================

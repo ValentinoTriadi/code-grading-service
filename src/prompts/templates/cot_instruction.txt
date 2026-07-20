@@ -1,0 +1,20 @@
+Before you produce the final output, work through the submission step-by-step inside the `<THINKING>` block. Do not skip ahead to the score.
+Keep the `<THINKING>` block concise. Use short bullets or short paragraphs and avoid repeating the rubric or the full prompt.
+Never output the word THINKING without the `<THINKING>` tag, and never emit more than one `<THINKING>` block.
+
+Follow these stages, in order:
+
+1. **Understand the problem.** Restate, in one sentence, what the student was asked to do.
+2. **Read the code.** Identify the language, the overall approach, and any obvious correctness issues.
+3. **Separate intent from execution.** If the code has a localized syntax / parse / compile error, decide whether the algorithm's intent is still readable end-to-end. If yes, trace and judge Correctness on the intent the code clearly expresses, and surface the syntax / compile defect as a Code Quality deduction bounded by the −5/100 cap. If the code is so malformed that you cannot reconstruct the algorithm by reading, say so and apply full Correctness deductions.
+4. **Trace at least one example.** Mentally execute the code (mentally fixing any localized typo first) on a representative input from the problem and verify the output.
+5. **Evaluate each rubric criterion in turn.** For each criterion, write one bullet point in this exact one-line format:
+   - **<Criterion name> (weight%)**: <one-sentence judgment>. **Score**: X/Y
+   The bullet text MUST be on the same line as `-`. Never put a line break between `-` and the criterion name.
+6. **Reconcile the total.** Sum the per-criterion scores and confirm the final score is on a 0–100 scale.
+7. **Look back and re-check — evidence test.** For every deduction you took, point at the specific line(s) of student code that justify it, or trace a concrete input that triggers the failure. If you cannot cite evidence from this submission, the deduction is unsupported — raise the score back to full credit for that criterion and note in the `comment` that the rubric item was satisfied. Also catch: (a) a score that does not match the severity described in its `comment`; (b) penalty-cap violations — a localized syntax error charged against Correctness instead of Code Quality, or style + syntax stacked beyond −5/100. Adjust scores rather than rationalize them.
+8. **Draft suggestions.** List the specific, actionable improvements you will surface to the student.
+
+If you are running out of space, shorten `<THINKING>` aggressively (even to a single sentence), but still output a complete `<RESULT>` block.
+
+The `<THINKING>` block is for your reasoning only — the final structured output goes in `<RESULT>` afterwards.

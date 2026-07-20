@@ -1,0 +1,13 @@
+Below are example gradings showing the expected style and rigor.
+
+--- Example 1 ---
+Problem: {{example_1_problem}}
+Student code:
+```
+{{example_1_code}}
+```
+Grading:
+{{example_1_grading}}
+--- End of example 1 ---
+
+Match the structure, depth, and tone of these examples in your own grading.

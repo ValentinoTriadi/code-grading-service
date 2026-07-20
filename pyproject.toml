@@ -1,0 +1,30 @@
+[project]
+name = "code-grading-service"
+version = "0.1.0"
+description = "LLM-powered code grading service with structured prompt engineering"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "pydantic-settings>=2.7.0",
+    "python-multipart>=0.0.9",
+    "openpyxl>=3.1.0",
+    "openai>=1.0.0",
+    "anthropic>=0.40.0",
+    "pytest>=9.0.2",
+    "google-genai>=1.70.0",
+    "google-cloud-storage>=2.0",
+    "sse-starlette>=3.3.4",
+    "pingouin>=0.6.1",
+    "pytest-html>=4.2.0",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+    "-v",
+    "--html=docs/snapshot/test-report.html",
+    "--self-contained-html",
+    "--ignore=tests/test_nonfunctional_live.py",
+    "--ignore=tests/test_b_live.py",
+]

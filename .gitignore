@@ -205,3 +205,26 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# macOS
+.DS_Store
+
+# Local gcloud CLI install (extracted SDK + downloaded installer archive).
+# Keep these out of the repo — install gcloud system-wide via Homebrew or
+# similar, and let Application Default Credentials live in ~/.config/gcloud/.
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
+
+.env.experiment
+
+# Experiment raw result dumps — large per-scenario/per-request response
+# logs. Keep only the aggregated summary.txt and state.json versioned.
+experiments/results/*/
+experiments/results/phase1.jsonl
+experiments/results/phase2.jsonl
+# Data uji Olympia — hanya folder raw (kode/NIM/email mahasiswa) yang di-ignore.
+# problems.json, submissions.json (anonim), rubrik & grading_sheet TETAP di-track.
+experiments/holdout/raw/
+# Same raw-dump convention as experiments/results/ above — keep only state.json
+# and RESULTS.md (aggregated) versioned for the holdout run.
+experiments/holdout/results/*.jsonl
